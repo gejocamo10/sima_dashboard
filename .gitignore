@@ -1,0 +1,7 @@
+__pycache__
+venv
+app/.env
+app/.streamlit/secrets.toml
+observaciones.xlsx
+temp_coctel_completo.csv
+test.ipynb
