@@ -1849,11 +1849,11 @@ def coctel_dashboard():
         titulo_g31 = "Porcentaje de notas por mensaje de fuerza"
     
     temp_g31 = temp_g31[['coctel','id_fuente','mensaje_fuerza']]
+    temp_g31=temp_g31.groupby(['mensaje_fuerza']).agg({'coctel':'count'}).reset_index()
+    temp_g31['porcentaje'] = (temp_g31['coctel'] / temp_g31['coctel'].sum()) * 100
+    temp_g31 = temp_g31.dropna()
 
     if not temp_g31.empty:
-        temp_g31=temp_g31.groupby(['mensaje_fuerza']).agg({'coctel':'count'}).reset_index()
-        temp_g31['porcentaje'] = (temp_g31['coctel'] / temp_g31['coctel'].sum()) * 100
-
         fig = px.bar(
             temp_g31,
             x='coctel',
