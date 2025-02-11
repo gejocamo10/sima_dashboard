@@ -596,8 +596,13 @@ def coctel_dashboard():
                         y='coctel',
                         color='nombre_facebook_page',
                         title='Top 3 redes sociales con mayor porcentaje de cocteles',
-                        labels = {'semana':'Semana','coctel':'Porcentaje de cocteles %'}
+                        labels={'semana': 'Semana', 'coctel': 'Porcentaje de cocteles %'},
+                        markers=True,
+                        text=temp_g5_redes["coctel"] if mostrar_todos else ["" if semana != temp_g5_redes["semana"].max() else pct for semana, pct in zip(temp_g5_redes["semana"], temp_g5_redes["coctel"])]
                         )
+
+        fig_5.update_traces(textposition="top center")
+        fig_5.update_xaxes(type="category")
 
         st.plotly_chart(fig_5)
 
@@ -626,10 +631,16 @@ def coctel_dashboard():
                         y='coctel',
                         color='nombre_canal',
                         title='Top 3 medios con mayor porcentaje de cocteles',
-                        labels = {'semana':'Semana','coctel':'Porcentaje de cocteles %'}
+                        labels={'semana': 'Semana', 'coctel': 'Porcentaje de cocteles %'},
+                        markers=True,
+                        text=temp_g5_medio["coctel"] if mostrar_todos else ["" if semana != temp_g5_medio["semana"].max() else pct for semana, pct in zip(temp_g5_medio["semana"], temp_g5_medio["coctel"])]
                         )
-        
+
+        fig_5.update_traces(textposition="top center")
+        fig_5.update_xaxes(type="category")
+
         st.plotly_chart(fig_5)
+
 
     else:
         st.warning("No hay datos para mostrar")
@@ -708,28 +719,31 @@ def coctel_dashboard():
 
         fig_6 = go.Figure()
 
-        # Iterar sobre cada lugar único y añadir una traza para cada uno
         for lugar in temp_g6['lugar'].unique():
             df_temp = temp_g6[temp_g6['lugar'] == lugar]
             fig_6.add_trace(go.Scatter(
                 x=df_temp['semana'], 
                 y=df_temp['coctel_mean'],
-                mode='lines+markers',
+                mode='lines+markers+text' if mostrar_todos else 'lines+markers',
                 name=lugar,
+                text=df_temp["coctel_mean"] if mostrar_todos else ["" if semana != df_temp["semana"].max() else pct for semana, pct in zip(df_temp["semana"], df_temp["coctel_mean"])],
+                textposition="top center",
                 line=dict(width=2),
                 marker=dict(size=6)
             ))
 
         fig_6.update_layout(
-            title=f"Crecimiento de cocteles por macroregión en {option_macroregion_g6} entre {fecha_inicio_g6} y {fecha_fin_g6}",
+            title=f"Crecimiento de cocteles por macroregión en {option_macroregion_g6} entre {fecha_inicio_g6.strftime('%d-%m-%Y')} y {fecha_fin_g6.strftime('%d-%m-%Y')}",
             xaxis_title='Semana',
             yaxis_title='Crecimiento de Cocteles (%)',
             template='plotly_white',
-            xaxis=dict(tickformat='%Y-%m-%d'))
+            xaxis=dict(type="category")
+        )
 
         # Mostrar el gráfico
         st.plotly_chart(fig_6)
         st.write("Nota: Los valores muestran el porcentaje de cocteles en cada semana tomando como referencia el viernes")
+
 
     else:
         st.warning("No hay datos para mostrar")
@@ -910,16 +924,24 @@ def coctel_dashboard():
         conteo_total_g9['Porcentaje'] = conteo_total_g9['count'] / conteo_total_g9['count'].sum()
         conteo_total_g9['Porcentaje'] = conteo_total_g9['Porcentaje'].map('{:.0%}'.format)
         st.write(f"Porcentaje de acontecimientos con coctel en {option_lugar_g9} entre {fecha_inicio_g9} y {fecha_fin_g9}")
-        fig_9 = px.pie(conteo_total_g9,
-                    values='count',
-                    names='Coctel',
-                    title='Porcentaje de acontecimientos con coctel',
-                    hole=0.3,
-                    color='Coctel',
-                    color_discrete_map={'Sin coctel': 'orange', 'Con coctel': 'Blue'}
-                    )
+        fig_9 = px.pie(
+            conteo_total_g9,
+            values='count',
+            names='Coctel',
+            title='Porcentaje de acontecimientos con coctel',
+            hole=0.3,
+            color='Coctel',
+            color_discrete_map={'Sin coctel': 'orange', 'Con coctel': 'Blue'},
+            text=conteo_total_g9['Porcentaje'] if mostrar_todos else None  # Muestra porcentajes si mostrar_todos es True
+        )
+
+        fig_9.update_traces(
+            textposition='inside' if mostrar_todos else 'none',  # Posiciona el texto dentro si mostrar_todos es True
+            textinfo='label+percent' if mostrar_todos else 'label'  # Muestra porcentaje solo si mostrar_todos es True
+        )
 
         st.plotly_chart(fig_9)
+
 
     else:
         st.warning("No hay datos para mostrar")
@@ -1169,30 +1191,40 @@ def coctel_dashboard():
         conteo_notas_20_pct["neutral_pct"] = ((conteo_notas_20_pct['neutral'] / conteo_notas_20_pct['total']) * 100).round(1)
 
         conteo_notas_20_pct = conteo_notas_20_pct[["año_mes", "a_favor_pct", "en_contra_pct", "neutral_pct"]]
-        fig_20 = px.bar(conteo_notas_20_pct,
-                    x='año_mes',
-                    y=['a_favor_pct', 'en_contra_pct', 'neutral_pct'],
-                    barmode='stack',
-                    title=titulo_g20,
-                    labels={'año_mes': 'Año y Mes',
-                            'value': 'Porcentaje',
-                            'variable': 'Tipo de Nota'},
-                    text_auto=True,
-                    color_discrete_map={'a_favor_pct': 'blue',
-                                        'en_contra_pct': 'red',
-                                        'neutral_pct': 'gray'}
-                    )
-        fig_20.update_layout(barmode='stack', xaxis={'categoryorder':'category ascending'})
+        fig_20 = px.bar(
+            conteo_notas_20_pct,
+            x='año_mes',
+            y=['a_favor_pct', 'en_contra_pct', 'neutral_pct'],
+            barmode='stack',
+            title=titulo_g20,
+            labels={'año_mes': 'Año y Mes',
+                    'value': 'Porcentaje',
+                    'variable': 'Tipo de Nota'},
+            text=conteo_notas_20_pct[['a_favor_pct', 'en_contra_pct', 'neutral_pct']].applymap(lambda x: f"{x}%" if mostrar_todos else ""),
+            color_discrete_map={'a_favor_pct': 'blue',
+                                'en_contra_pct': 'red',
+                                'neutral_pct': 'gray'}
+        )
+
+        fig_20.update_layout(barmode='stack', xaxis={'categoryorder': 'category ascending'})
+
         fig_20.for_each_trace(lambda t: t.update(name=t.name.replace('_pct', ' (%)')))
+
         conteo_notas_20_pct["a_favor_pct"] = conteo_notas_20_pct["a_favor_pct"].map("{:.1f}".format)
         conteo_notas_20_pct["en_contra_pct"] = conteo_notas_20_pct["en_contra_pct"].map("{:.1f}".format)
         conteo_notas_20_pct["neutral_pct"] = conteo_notas_20_pct["neutral_pct"].map("{:.1f}".format)
-        conteo_notas_20_pct = conteo_notas_20_pct.rename(columns={"a_favor_pct": "A favor (%)", "en_contra_pct": "En contra (%)", "neutral_pct": "Neutral (%)"})
+
+        conteo_notas_20_pct = conteo_notas_20_pct.rename(columns={
+            "a_favor_pct": "A favor (%)",
+            "en_contra_pct": "En contra (%)",
+            "neutral_pct": "Neutral (%)"
+        })
 
         st.dataframe(conteo_notas_20_pct, hide_index=True)
 
         st.plotly_chart(fig_20)
         st.write("Los porcentajes se calcularon sobre el total de notas considerando coctel y otras fuentes")
+
     else:
         st.warning("No hay datos para mostrar")
 
@@ -1409,17 +1441,24 @@ def coctel_dashboard():
         df_top_10_24["porcentaje"] = df_top_10_24["porcentaje"]*100
         df_top_10_24['porcentaje'] = df_top_10_24['porcentaje'].apply(lambda x:"{:.2f}".format(x))
 
-        fig_24 = px.bar(df_top_10_24,
-                        x="porcentaje",
-                        y="descripcion",
-                        title=titulo,
-                        orientation='h',
-                        text="porcentaje", 
-                        labels={'porcentaje': 'Porcentaje %', 'descripcion': 'Temas'}
-                        )
+        fig_24 = px.bar(
+            df_top_10_24,
+            x="porcentaje",
+            y="descripcion",
+            title=titulo,
+            orientation='h',
+            text=df_top_10_24["porcentaje"] if mostrar_todos else None,  # Muestra valores si mostrar_todos es True
+            labels={'porcentaje': 'Porcentaje %', 'descripcion': 'Temas'}
+        )
 
-        fig_24.update_layout(yaxis={'categoryorder':'total ascending'})
+        fig_24.update_traces(
+            textposition="outside" if mostrar_todos else "none"  # Posiciona el texto fuera si mostrar_todos es True
+        )
+
+        fig_24.update_layout(yaxis={'categoryorder': 'total ascending'})
+
         st.plotly_chart(fig_24, use_container_width=True)
+
 
     else:
         st.warning("No hay datos para mostrar")
@@ -1703,18 +1742,26 @@ def coctel_dashboard():
             barmode="group",
             title=f"Porcentaje de cóctel de todos los medios - {fecha_g28.strftime('%B %Y')}",
             labels={"lugar": "Regiones", "porcentaje_coctel": "Porcentaje de Cóctel"},
+            text=temp_g28["porcentaje_coctel"].map("{:.2f}%".format) if mostrar_todos else None,  # Muestra valores si mostrar_todos es True
             color_discrete_map={"Radio": "blue", "Redes": "red", "TV": "gray"},
         )
+
+        fig.update_traces(
+            textposition="outside" if mostrar_todos else "none"  # Posiciona el texto fuera si mostrar_todos es True
+        )
+
+        # Agregar líneas de promedio por fuente
         for fuente, promedio in promedios.items():
             fig.add_hline(
                 y=promedio,
                 line_dash="dash",
-                annotation_text=f"Promedio de {fuente}",
+                annotation_text=f"Promedio de {fuente}: {promedio:.2f}%",
                 annotation_position="right",
                 line_color={"Radio": "blue", "Redes": "orange", "TV": "gray"}[fuente],
             )
-        
+
         st.plotly_chart(fig)
+
     else:
         st.warning("No hay datos para mostrar")
 
@@ -1745,15 +1792,16 @@ def coctel_dashboard():
             barmode="group",
             title=f"Porcentaje de cóctel {fuente_g29} - Últimos 3 meses",
             labels={"lugar": "Región", "porcentaje_coctel": "Porcentaje de Cóctel"},
-            color_discrete_sequence=["lightblue", "darkblue", "navy"]
+            color_discrete_sequence=["lightblue", "darkblue", "navy"],
+            text=temp_g29["porcentaje_coctel"].map("{:.2f}%".format) if mostrar_todos else None  # Solo muestra los valores si mostrar_todos es True
         )
-        # fig.add_hline(
-        #     y=promedio,
-        #     line_dash="dash",
-        #     line_color="gray"
-        # )
+
+        fig.update_traces(
+            textposition="outside" if mostrar_todos else "none"  # Posiciona los valores fuera de las barras si mostrar_todos es True
+        )
 
         st.plotly_chart(fig)
+
     else:
         st.warning("No hay datos para mostrar")
 
@@ -1859,11 +1907,15 @@ def coctel_dashboard():
             x='coctel',
             y='mensaje_fuerza',
             orientation='h',
-            text=temp_g31.apply(lambda row: f"{row['coctel']} ({row['porcentaje']:.1f}%)", axis=1),
+            text=temp_g31.apply(lambda row: f"{row['coctel']} ({row['porcentaje']:.1f}%)", axis=1) if mostrar_todos else None,
             labels={'coctel': '', 'mensaje_fuerza': ''},
             title=titulo_g31,
             color_discrete_sequence=['red']
         )
+        fig.update_traces(
+            textposition="outside" if mostrar_todos else "none"
+        )
         st.plotly_chart(fig)
+
     else:
         st.warning("No hay datos para mostrar")
