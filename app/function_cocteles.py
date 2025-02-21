@@ -1,8 +1,10 @@
 import pandas as pd
+import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
+from pandas.tseries.offsets import MonthEnd
 
 #%%% Funcion 1
 def coctel_dashboard():
@@ -59,6 +61,15 @@ def coctel_dashboard():
                             'Azul': 'Blue',
                         }
     mostrar_todos = st.checkbox("Mostrar todos los porcentajes", value=True)
+
+    ano_actual = datetime.now().year
+    anos = list(range(ano_actual - 9, ano_actual + 1))  # Últimos 10 años
+    ano = datetime.now().year
+    anos = list(range(ano_actual - 9, ano_actual + 1))  # Últimos 10 años
+    meses = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
 
     #%% 1.- PROPORCION COCTELES solo fechas y lugar
     st.subheader("sn.- Proporción de cocteles en lugar y fecha específica")
@@ -217,433 +228,457 @@ def coctel_dashboard():
         st.warning("No hay datos para mostrar")
 
     #%% 3.1.- Grafico semanal por porcentaje cocteles
-
     st.subheader("3.- Gráfico semanal por porcentaje de cocteles en lugar y fecha específica")
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        fecha_inicio_g1 = st.date_input(
-        "Fecha Inicio g3",
-        format="DD.MM.YYYY")
+        fecha_inicio_g1 = st.date_input("Fecha Inicio g3", format="DD.MM.YYYY")
     with col2:
-        fecha_fin_g1 = st.date_input(
-        "Fecha Fin g3",
-        format="DD.MM.YYYY")
-
+        fecha_fin_g1 = st.date_input("Fecha Fin g3", format="DD.MM.YYYY")
     with col3:
-        option_fuente_g1 = st.selectbox(
-        "Fuente g3",
-        ("Radio", "TV", "Redes","Todos"))
-
+        option_fuente_g1 = st.selectbox("Fuente g3", ("Radio", "TV", "Redes", "Todos"))
     with col4:
-        option_lugar_g1 = st.selectbox(
-        "Lugar g3",
-        lugares_uniques
-        )
+        option_lugar_g1 = st.selectbox("Lugar g3", lugares_uniques)
 
-    fecha_inicio_g1 = pd.to_datetime(fecha_inicio_g1,format='%Y-%m-%d')
-    fecha_fin_g1 = pd.to_datetime(fecha_fin_g1,format='%Y-%m-%d')
+    usar_fechas_viernes_g3 = st.toggle("Mostrar Fechas (Viernes de cada semana)",  key="toggle_fechas_g3")
 
-    temp_g1 = temp_coctel_fuente[(temp_coctel_fuente['fecha_registro']>=fecha_inicio_g1)&(temp_coctel_fuente['fecha_registro']<=fecha_fin_g1)&
-                            (temp_coctel_fuente['lugar']==option_lugar_g1)]
+    fecha_inicio_g1 = pd.to_datetime(fecha_inicio_g1, format="%Y-%m-%d")
+    fecha_fin_g1 = pd.to_datetime(fecha_fin_g1, format="%Y-%m-%d")
 
-    if option_fuente_g1 == 'Radio':
-        temp_g1 = temp_g1[temp_g1['id_fuente']==1]
-    elif option_fuente_g1 == 'TV':
-        temp_g1 = temp_g1[temp_g1['id_fuente']==2]
-    elif option_fuente_g1 == 'Redes':
-        temp_g1 = temp_g1[temp_g1['id_fuente']==3]
+    temp_g1 = temp_coctel_fuente[
+        (temp_coctel_fuente["fecha_registro"] >= fecha_inicio_g1)
+        & (temp_coctel_fuente["fecha_registro"] <= fecha_fin_g1)
+        & (temp_coctel_fuente["lugar"] == option_lugar_g1)
+    ]
 
+    if option_fuente_g1 == "Radio":
+        temp_g1 = temp_g1[temp_g1["id_fuente"] == 1]
+    elif option_fuente_g1 == "TV":
+        temp_g1 = temp_g1[temp_g1["id_fuente"] == 2]
+    elif option_fuente_g1 == "Redes":
+        temp_g1 = temp_g1[temp_g1["id_fuente"] == 3]
 
     if not temp_g1.empty:
-        temp_g1['semana'] = temp_g1['fecha_registro'].dt.isocalendar().year.map(str) +'-'+temp_g1['fecha_registro'].dt.isocalendar().week.map(str)
-        temp_g1 = temp_g1.groupby('semana').agg({'id':'count','coctel':'sum','fecha_registro':'first'}).reset_index()
-        temp_g1 = temp_g1.rename(columns={'id':'Cantidad'})
-        temp_g1['porcentaje'] = temp_g1['coctel'] / temp_g1['Cantidad']
-        temp_g1 = temp_g1.sort_values('fecha_registro')
-        temp_fecha = pd.DataFrame()
-        temp_fecha['fecha'] = pd.date_range(start=fecha_inicio_g1, end=fecha_fin_g1)
-        temp_fecha['semana'] = temp_fecha['fecha'].dt.isocalendar().year.map(str) +'-'+temp_fecha['fecha'].dt.isocalendar().week.map(str)
-        temp_fecha = temp_fecha.groupby('semana').agg({'fecha':'first'}).reset_index()
-        temp_fecha = temp_fecha.sort_values('fecha')
-        del temp_fecha['fecha']
-        temp_g1 = pd.merge(temp_fecha, temp_g1, how='left', on='semana')
-        temp_g1['Cantidad'] = temp_g1['Cantidad'].fillna(0)
-        temp_g1['porcentaje'] = temp_g1['porcentaje'].fillna(0)
-        temp_g1 = temp_g1.sort_values('fecha_registro')
-        temp_g1['semana'] = temp_g1['semana'].map(str)
-        temp_g1["porcentaje"] = temp_g1["porcentaje"] * 100 # a dos decimales
-        temp_g1["porcentaje"] = temp_g1["porcentaje"].map('{:.2f}'.format)
-        temp_g1 = temp_g1.dropna()
+        temp_g1["semana"] = (
+            temp_g1["fecha_registro"].dt.year.map(str)
+            + "-"
+            + temp_g1["fecha_registro"].dt.isocalendar().week.map(str)
+        )
 
-        st.write(f"Gráfico semanal por porcentaje de cocteles en {option_lugar_g1} entre {fecha_inicio_g1} y {fecha_fin_g1}")
+        temp_g1["viernes"] = temp_g1["fecha_registro"] + pd.to_timedelta(
+            (4 - temp_g1["fecha_registro"].dt.weekday) % 7, unit="D"
+        )
+
+        temp_g1 = temp_g1.groupby("semana", as_index=False).agg(
+            {"id": "count", "coctel": "sum", "fecha_registro": "first", "viernes": "first"}
+        )
+
+        temp_g1 = temp_g1.rename(columns={"id": "Cantidad"})
+        temp_g1["porcentaje"] = (temp_g1["coctel"] / temp_g1["Cantidad"]) * 100
+        temp_g1 = temp_g1.sort_values("fecha_registro")
+
+        if usar_fechas_viernes_g3:
+            temp_g1["eje_x"] = temp_g1["viernes"].dt.strftime("%Y-%m-%d")
+        else:
+            temp_g1["eje_x"] = temp_g1["fecha_registro"].dt.strftime("%Y-%m") + "-S" + (
+                (temp_g1["fecha_registro"].dt.day - 1) // 7 + 1
+            ).astype(str)
 
         fig1 = go.Figure()
-
         fig1.add_trace(
             go.Scatter(
-                x=temp_g1['semana'], 
-                y=temp_g1['porcentaje'], 
-                mode='lines+markers+text' if mostrar_todos else 'lines+markers',  # Aquí está la corrección
-                text=temp_g1['porcentaje'] if mostrar_todos else ["" if semana != temp_g1['semana'].max() else pct for semana, pct in zip(temp_g1['semana'], temp_g1['porcentaje'])],
-                textposition="top center"
+                x=temp_g1["eje_x"],
+                y=temp_g1["porcentaje"],
+                mode="lines+markers+text" if mostrar_todos else "lines+markers",
+                text=temp_g1["porcentaje"].map(lambda x: f"{x:.1f}")
+                if mostrar_todos
+                else None,
+                textposition="top center",
             )
         )
-        fig1.update_xaxes(type="category", title_text="Semana")
+
+        fig1.update_xaxes(title_text="Fecha (Viernes)" if usar_fechas_viernes_g3 else "Semana")
         fig1.update_yaxes(title_text="Porcentaje de cocteles %")
+        fig1.update_layout(xaxis=dict(tickformat="%Y-%m-%d" if usar_fechas_viernes_g3 else ""))
+        
         st.plotly_chart(fig1)
 
     else:
         st.warning("No hay datos para mostrar")
 
     #%% 3.2.- Grafico semanal noticias a favor y en contra
-
     st.subheader("4.- Gráfico semanal de noticias a favor y en contra en lugar y fecha específica")
 
-    col1, col2, col3, col4= st.columns(4)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
-        fecha_inicio_g2 = st.date_input(
-        "Fecha Inicio g4",
-        format="DD.MM.YYYY")
+        fecha_inicio_g2 = st.date_input("Fecha Inicio g4", format="DD.MM.YYYY")
     with col2:
-        fecha_fin_g2 = st.date_input(
-        "Fecha Fin g4",
-        format="DD.MM.YYYY")
+        fecha_fin_g2 = st.date_input("Fecha Fin g4", format="DD.MM.YYYY")
     with col3:
-        option_lugar_g2 = st.selectbox(
-        "Lugar g4",
-        lugares_uniques)
+        option_lugar_g2 = st.selectbox("Lugar g4", lugares_uniques)
     with col4:
-        option_fuente_g2 = st.selectbox(
-        "Fuente g4",
-        ("Radio", "TV", "Redes","Todos"))
+        option_fuente_g2 = st.selectbox("Fuente g4", ("Radio", "TV", "Redes", "Todos"))
 
-    fecha_inicio_g2 = pd.to_datetime(fecha_inicio_g2,format='%Y-%m-%d')
-    fecha_fin_g2 = pd.to_datetime(fecha_fin_g2,format='%Y-%m-%d')
+    usar_fechas_viernes_g4 = st.toggle("Mostrar Fechas (Viernes de cada semana)",  key="toggle_g4")
 
-    temp_g2 = temp_coctel_fuente[(temp_coctel_fuente['fecha_registro']>=fecha_inicio_g2) &
-                                (temp_coctel_fuente['fecha_registro']<=fecha_fin_g2) &
-                                (temp_coctel_fuente['lugar']==option_lugar_g2)]
+    fecha_inicio_g2 = pd.to_datetime(fecha_inicio_g2, format="%Y-%m-%d")
+    fecha_fin_g2 = pd.to_datetime(fecha_fin_g2, format="%Y-%m-%d")
+
+    temp_g2 = temp_coctel_fuente[
+        (temp_coctel_fuente["fecha_registro"] >= fecha_inicio_g2)
+        & (temp_coctel_fuente["fecha_registro"] <= fecha_fin_g2)
+        & (temp_coctel_fuente["lugar"] == option_lugar_g2)
+    ]
 
     if not temp_g2.empty:
-        temp_g2['semana'] = temp_g2['fecha_registro'].dt.isocalendar().year.map(str) +'-'+temp_g2['fecha_registro'].dt.isocalendar().week.map(str)
-        temp_g2['a_favor'] = 0 # 1: a favor, 2: en contra
-        temp_g2['a_favor'][temp_g2['id_posicion'].isin([1,2])] = 1
-        temp_g2['en_contra'] = 0 # 1: a favor, 2: en contra
-        temp_g2['en_contra'][temp_g2['id_posicion'].isin([4,5])] = 1
+        temp_g2["semana"] = (
+            temp_g2["fecha_registro"].dt.year.map(str)
+            + "-"
+            + temp_g2["fecha_registro"].dt.isocalendar().week.map(str)
+        )
 
-        if option_fuente_g2 == 'Radio':
-            temp_g2 = temp_g2[temp_g2['id_fuente']==1].groupby('semana').agg({'id':'count','a_favor':'sum','en_contra':'sum','fecha_registro':'first'}).reset_index()
-        elif option_fuente_g2 == 'TV':
-            temp_g2 = temp_g2[temp_g2['id_fuente']==2].groupby('semana').agg({'id':'count','a_favor':'sum','en_contra':'sum','fecha_registro':'first'}).reset_index()
-        elif option_fuente_g2 == 'Redes':
-            temp_g2 = temp_g2[temp_g2['id_fuente']==3].groupby('semana').agg({'id':'count','a_favor':'sum','en_contra':'sum','fecha_registro':'first'}).reset_index()
+        temp_g2["viernes"] = temp_g2["fecha_registro"] + pd.to_timedelta(
+            (4 - temp_g2["fecha_registro"].dt.weekday) % 7, unit="D"
+        )
+
+        temp_g2["a_favor"] = 0
+        temp_g2["a_favor"][temp_g2["id_posicion"].isin([1, 2])] = 1
+        temp_g2["en_contra"] = 0
+        temp_g2["en_contra"][temp_g2["id_posicion"].isin([4, 5])] = 1
+
+        if option_fuente_g2 == "Radio":
+            temp_g2 = temp_g2[temp_g2["id_fuente"] == 1]
+        elif option_fuente_g2 == "TV":
+            temp_g2 = temp_g2[temp_g2["id_fuente"] == 2]
+        elif option_fuente_g2 == "Redes":
+            temp_g2 = temp_g2[temp_g2["id_fuente"] == 3]
+
+        temp_g2 = temp_g2.groupby("semana", as_index=False).agg(
+            {
+                "id": "count",
+                "a_favor": "sum",
+                "en_contra": "sum",
+                "fecha_registro": "first",
+                "viernes": "first",
+            }
+        )
+
+        temp_g2 = temp_g2.rename(columns={"id": "Cantidad"})
+        temp_g2 = temp_g2.sort_values("fecha_registro")
+        temp_g2["a_favor"] = (temp_g2["a_favor"] / temp_g2["Cantidad"]) * 100
+        temp_g2["en_contra"] = (temp_g2["en_contra"] / temp_g2["Cantidad"]) * 100
+
+        if usar_fechas_viernes_g4:
+            temp_g2["eje_x"] = temp_g2["viernes"].dt.strftime("%Y-%m-%d")
         else:
-            temp_g2 = temp_g2.groupby('semana').agg({'id':'count','a_favor':'sum','en_contra':'sum','fecha_registro':'first'}).reset_index()
+            temp_g2["eje_x"] = temp_g2["fecha_registro"].dt.strftime("%Y-%m") + "-S" + (
+                (temp_g2["fecha_registro"].dt.day - 1) // 7 + 1
+            ).astype(str)
 
-        temp_g2 = temp_g2.rename(columns={'id':'Cantidad'})
-        temp_g2 = temp_g2.sort_values('fecha_registro')
-        temp_fecha = pd.DataFrame()
-        temp_fecha['fecha'] = pd.date_range(start=fecha_inicio_g2, end=fecha_fin_g2)
-        temp_fecha['semana'] = temp_fecha['fecha'].dt.isocalendar().year.map(str) +'-'+temp_fecha['fecha'].dt.isocalendar().week.map(str)
-        temp_fecha = temp_fecha.groupby('semana').agg({'fecha':'first'}).reset_index()
-        temp_fecha = temp_fecha.sort_values('fecha')
-        del temp_fecha['fecha']
-        temp_g2 = pd.merge(temp_fecha, temp_g2, how='left', on='semana')
-        temp_g2['Cantidad'] = temp_g2['Cantidad'].fillna(0)
-        temp_g2['a_favor'] = temp_g2['a_favor'].fillna(0)
-        temp_g2['en_contra'] = temp_g2['en_contra'].fillna(0)
-        temp_g2['a_favor'] = temp_g2['a_favor'] / temp_g2['Cantidad']
-        temp_g2['en_contra'] = temp_g2['en_contra'] / temp_g2['Cantidad']
-        temp_g2["a_favor"] = temp_g2["a_favor"] * 100
-        temp_g2["en_contra"] = temp_g2["en_contra"] * 100
-        temp_g2["a_favor"] = temp_g2["a_favor"].map('{:.2f}'.format)
-        temp_g2["en_contra"] = temp_g2["en_contra"].map('{:.2f}'.format)
-        temp_g2 = temp_g2.dropna()
-
-        st.write(f"Gráfico semanal de noticias a favor y en contra en {option_lugar_g2} entre {fecha_inicio_g2} y {fecha_fin_g2}")
         fig2 = go.Figure()
         fig2.add_trace(
             go.Scatter(
-                x=temp_g2['semana'], 
-                y=temp_g2['a_favor'], 
-                mode='lines+markers+text' if mostrar_todos else 'lines+markers', 
-                name='A favor', 
-                text=temp_g2['a_favor'] if mostrar_todos else ["" if semana != temp_g2['semana'].max() else pct for semana, pct in zip(temp_g2['semana'], temp_g2['a_favor'])],
+                x=temp_g2["eje_x"],
+                y=temp_g2["a_favor"],
+                mode="lines+markers+text" if mostrar_todos else "lines+markers",
+                name="A favor",
+                text=temp_g2["a_favor"].map(lambda x: f"{x:.1f}") if mostrar_todos else None,
                 textposition="top center",
-                fillcolor='blue'
+                line=dict(color="blue"),
             )
         )
+
         fig2.add_trace(
             go.Scatter(
-                x=temp_g2['semana'], 
-                y=temp_g2['en_contra'], 
-                mode='lines+markers+text' if mostrar_todos else 'lines+markers', 
-                name='En contra', 
-                text=temp_g2['en_contra'] if mostrar_todos else ["" if semana != temp_g2['semana'].max() else pct for semana, pct in zip(temp_g2['semana'], temp_g2['en_contra'])],
+                x=temp_g2["eje_x"],
+                y=temp_g2["en_contra"],
+                mode="lines+markers+text" if mostrar_todos else "lines+markers",
+                name="En contra",
+                text=temp_g2["en_contra"].map(lambda x: f"{x:.1f}") if mostrar_todos else None,
                 textposition="top center",
-                line=dict(color='red'), 
-                marker=dict(color='red')
+                line=dict(color="red"),
             )
         )
-        fig2.update_xaxes(type="category", title_text="Semana")
+
+        fig2.update_xaxes(title_text="Fecha (Viernes)" if usar_fechas_viernes_g4 else "Semana")
         fig2.update_yaxes(title_text="Porcentaje de noticias %")
+        fig2.update_layout(xaxis=dict(tickformat="%Y-%m-%d" if usar_fechas_viernes_g4 else ""))
+
         st.plotly_chart(fig2)
 
     else:
         st.warning("No hay datos para mostrar")
-    #%% 4.- Grafico acumulativo porcentaje cocteles
 
+    #%% 4.- Grafico acumulativo porcentaje cocteles
     st.subheader("5.- Gráfico acumulativo porcentaje de cocteles en lugar y fecha específica")
 
-    col1, col2, col3= st.columns(3)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        fecha_inicio_g3 = st.date_input(
-        "Fecha Inicio g5",
-        format="DD.MM.YYYY")
+        fecha_inicio_g3 = st.date_input("Fecha Inicio g5", format="DD.MM.YYYY")
     with col2:
-        fecha_fin_g3 = st.date_input(
-        "Fecha Fin g5",
-        format="DD.MM.YYYY")
+        fecha_fin_g3 = st.date_input("Fecha Fin g5", format="DD.MM.YYYY")
     with col3:
-        option_fuente_g3 = st.selectbox(
-        "Lugar g5",
-        ("Radio", "TV", "Redes","Todos"))
-    
-    option_lugar_g3 = st.multiselect(
-    "Lugar g5",
-    lugares_uniques,lugares_uniques)
+        option_fuente_g3 = st.selectbox("Fuente g5", ("Radio", "TV", "Redes", "Todos"))
 
-    fecha_inicio_g3 = pd.to_datetime(fecha_inicio_g3,format='%Y-%m-%d')
-    fecha_fin_g3 = pd.to_datetime(fecha_fin_g3,format='%Y-%m-%d')
+    option_lugar_g3 = st.multiselect("Lugar g5", lugares_uniques, lugares_uniques)
 
-    temp_g3 = temp_coctel_fuente[(temp_coctel_fuente['fecha_registro']>=fecha_inicio_g3) &
-                                (temp_coctel_fuente['fecha_registro']<=fecha_fin_g3) &
-                                (temp_coctel_fuente['lugar'].isin(option_lugar_g3))]
+    usar_fechas_viernes_g5 = st.toggle("Mostrar Fechas (Viernes de cada semana)", key="toggle_g5")
 
-    if option_fuente_g3 == 'Radio':
-        temp_g3 = temp_g3[temp_g3['id_fuente']==1]
-    elif option_fuente_g3 == 'TV':
-        temp_g3 = temp_g3[temp_g3['id_fuente']==2]
-    elif option_fuente_g3 == 'Redes':
-        temp_g3 = temp_g3[temp_g3['id_fuente']==3]
+    fecha_inicio_g3 = pd.to_datetime(fecha_inicio_g3, format="%Y-%m-%d")
+    fecha_fin_g3 = pd.to_datetime(fecha_fin_g3, format="%Y-%m-%d")
+
+    temp_g3 = temp_coctel_fuente[
+        (temp_coctel_fuente["fecha_registro"] >= fecha_inicio_g3)
+        & (temp_coctel_fuente["fecha_registro"] <= fecha_fin_g3)
+        & (temp_coctel_fuente["lugar"].isin(option_lugar_g3))
+    ]
+
+    if option_fuente_g3 == "Radio":
+        temp_g3 = temp_g3[temp_g3["id_fuente"] == 1]
+    elif option_fuente_g3 == "TV":
+        temp_g3 = temp_g3[temp_g3["id_fuente"] == 2]
+    elif option_fuente_g3 == "Redes":
+        temp_g3 = temp_g3[temp_g3["id_fuente"] == 3]
 
     if not temp_g3.empty:
-        lista_lugares = list(temp_g3['lugar'].unique())
-        temp_g3['semana'] = temp_g3['fecha_registro'].dt.isocalendar().year.map(str) +'-'+temp_g3['fecha_registro'].dt.isocalendar().week.map(lambda x: f"{x:02}")
-        temp_g3 = temp_g3.groupby(['semana','lugar']).agg(coctel_mean = ("coctel", "mean")).reset_index()
+        temp_g3["semana"] = (
+            temp_g3["fecha_registro"].dt.year.map(str)
+            + "-"
+            + temp_g3["fecha_registro"].dt.isocalendar().week.map(lambda x: f"{x:02}")
+        )
+
+        temp_g3["viernes"] = temp_g3["fecha_registro"] + pd.to_timedelta(
+            (4 - temp_g3["fecha_registro"].dt.weekday) % 7, unit="D"
+        )
+
+        temp_g3 = temp_g3.groupby(["semana", "lugar"], as_index=False).agg(
+            coctel_mean=("coctel", "mean"), viernes=("viernes", "first")
+        )
+
         temp_g3["coctel_mean"] = temp_g3["coctel_mean"] * 100
-        temp_g3["coctel_mean"] = temp_g3["coctel_mean"].map('{:.2f}'.format)
+
+        if usar_fechas_viernes_g5:
+            temp_g3["eje_x"] = temp_g3["viernes"].dt.strftime("%Y-%m-%d")
+        else:
+            temp_g3["eje_x"] = temp_g3["viernes"].dt.strftime("%Y-%m") + "-S" + (
+                (temp_g3["viernes"].dt.day - 1) // 7 + 1
+            ).astype(str)
 
         fig = px.line(
             temp_g3,
-            x="semana",
+            x="eje_x",
             y="coctel_mean",
             color="lugar",
             title="Porcentaje de cocteles por semana %",
-            labels={"semana": "Semana", "coctel_mean": "Porcentaje de cocteles %"},
+            labels={"eje_x": "Fecha (Viernes)" if usar_fechas_viernes_g5 else "Semana", "coctel_mean": "Porcentaje de cocteles %"},
             markers=True,
-            text=temp_g3["coctel_mean"] if mostrar_todos else ["" if semana != temp_g3["semana"].max() else pct for semana, pct in zip(temp_g3["semana"], temp_g3["coctel_mean"])]
+            text=temp_g3["coctel_mean"].map(lambda x: f"{x:.1f}") if mostrar_todos else None,
         )
 
         fig.update_traces(textposition="top center")
-        fig.update_xaxes(type="category")
 
         st.plotly_chart(fig)
 
-        # cuadro con el ultimo porcentaje semanal
         st.write(f"Porcentaje de cocteles por lugar en la última semana entre {fecha_inicio_g3} y {fecha_fin_g3} según {option_fuente_g3}")
-        temp_g3 = temp_g3.sort_values('semana')
-        temp_g3 = temp_g3.groupby('lugar').last().reset_index()
-        temp_g3 = temp_g3[['lugar','coctel_mean']]
-        temp_g3 = temp_g3.rename(columns={'coctel_mean':'pct_cocteles'})
-        # temp_g3['pct_cocteles'] = temp_g3['pct_cocteles'].map('{:.0%}'.format)
+
+        temp_g3 = temp_g3.sort_values("semana").groupby("lugar").last().reset_index()
+        temp_g3['coctel_mean']=temp_g3['coctel_mean'].map(lambda x: f"{x:.1f}")
+        temp_g3 = temp_g3[["lugar", "coctel_mean"]].rename(columns={"coctel_mean": "pct_cocteles"})
+
         st.dataframe(temp_g3, hide_index=True)
 
     else:
         st.warning("No hay datos para mostrar")
 
     #%% #.- Top 3 mejores lugares segun fechas y fuente
-
     st.subheader("#.- Top 3 mejores porcentajes de coctel semanal por lugar en fuente y fecha específica")
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        fecha_inicio_sn2 = st.date_input(
-        "Fecha Inicio sn_2",
-        format="DD.MM.YYYY")
-
+        fecha_inicio_sn2 = st.date_input("Fecha Inicio sn_2", format="DD.MM.YYYY")
     with col2:
-        fecha_fin_sn2 = st.date_input(
-        "Fecha Fin sn_2",
-        format="DD.MM.YYYY")
-
+        fecha_fin_sn2 = st.date_input("Fecha Fin sn_2", format="DD.MM.YYYY")
     with col3:
-        option_fuente_sn2 = st.selectbox(
-        "Fuente sn_2",
-        ("Radio", "TV", "Redes"))
+        option_fuente_sn2 = st.selectbox("Fuente sn_2", ("Radio", "TV", "Redes"))
 
-    fecha_inicio_sn2 = pd.to_datetime(fecha_inicio_sn2,format='%Y-%m-%d')
-    fecha_fin_sn2 = pd.to_datetime(fecha_fin_sn2,format='%Y-%m-%d')
+    usar_fechas_viernes_sn2 = st.toggle("Mostrar Fechas (Viernes de cada semana)", key="toggle_sn2")
 
-    temp_sn2 = temp_coctel_fuente[(temp_coctel_fuente['fecha_registro']>=fecha_inicio_sn2) &
-                                    (temp_coctel_fuente['fecha_registro']<=fecha_fin_sn2)]
+    fecha_inicio_sn2 = pd.to_datetime(fecha_inicio_sn2, format="%Y-%m-%d")
+    fecha_fin_sn2 = pd.to_datetime(fecha_fin_sn2, format="%Y-%m-%d")
 
-    if option_fuente_sn2 == 'Radio':
-        temp_sn2 = temp_sn2[temp_sn2['id_fuente']==1]
-    elif option_fuente_sn2 == 'TV':
-        temp_sn2 = temp_sn2[temp_sn2['id_fuente']==2]
-    elif option_fuente_sn2 == 'Redes':
-        temp_sn2 = temp_sn2[temp_sn2['id_fuente']==3]
+    temp_sn2 = temp_coctel_fuente[
+        (temp_coctel_fuente["fecha_registro"] >= fecha_inicio_sn2)
+        & (temp_coctel_fuente["fecha_registro"] <= fecha_fin_sn2)
+    ]
+
+    if option_fuente_sn2 == "Radio":
+        temp_sn2 = temp_sn2[temp_sn2["id_fuente"] == 1]
+    elif option_fuente_sn2 == "TV":
+        temp_sn2 = temp_sn2[temp_sn2["id_fuente"] == 2]
+    elif option_fuente_sn2 == "Redes":
+        temp_sn2 = temp_sn2[temp_sn2["id_fuente"] == 3]
 
     if not temp_sn2.empty:
-        temp_sn2["semana"] = temp_sn2['fecha_registro'].dt.isocalendar().year.map(str) +'-'+temp_sn2['fecha_registro'].dt.isocalendar().week.map(lambda x: f"{x:02}")
-        temp_sn2 = temp_sn2.groupby(['lugar','semana']).agg({'coctel':'mean'}).reset_index()
+        temp_sn2["semana"] = (
+            temp_sn2["fecha_registro"].dt.year.map(str)
+            + "-"
+            + temp_sn2["fecha_registro"].dt.isocalendar().week.map(lambda x: f"{x:02}")
+        )
 
-        #we need create 1.- top 3 lugares with the highest percentage of coctel in the last week and 2.- bar chart of the top 3 places
-        temp_sn2_last = temp_sn2.sort_values('semana')
-        temp_sn2_last = temp_sn2.groupby(["lugar"]).last().reset_index()
-        temp_sn2_last = temp_sn2_last.sort_values('coctel',ascending=False).head(3).reset_index(drop=True)
-        
-        temp_sn2 = temp_sn2[temp_sn2['lugar'].isin(temp_sn2_last['lugar'])]
+        temp_sn2["viernes"] = temp_sn2["fecha_registro"] + pd.to_timedelta(
+            (4 - temp_sn2["fecha_registro"].dt.weekday) % 7, unit="D"
+        )
+
+        temp_sn2 = temp_sn2.groupby(["lugar", "semana"], as_index=False).agg(
+            coctel=("coctel", "mean"), viernes=("viernes", "first")
+        )
+
+        temp_sn2_last = temp_sn2.sort_values("semana").groupby(["lugar"]).last().reset_index()
+        temp_sn2_last = temp_sn2_last.sort_values("coctel", ascending=False).head(3).reset_index(drop=True)
+
+        temp_sn2 = temp_sn2[temp_sn2["lugar"].isin(temp_sn2_last["lugar"])]
         temp_sn2["coctel"] = temp_sn2["coctel"] * 100
-        temp_sn2["coctel"] = temp_sn2["coctel"].map('{:.2f}'.format)
-        temp_sn2 = temp_sn2.dropna()
+
+        if usar_fechas_viernes_sn2:
+            temp_sn2["eje_x"] = temp_sn2["viernes"].dt.strftime("%Y-%m-%d")
+        else:
+            temp_sn2["eje_x"] = temp_sn2["viernes"].dt.strftime("%Y-%m") + "-S" + (
+                (temp_sn2["viernes"].dt.day - 1) // 7 + 1
+            ).astype(str)
+
         fig_sn2 = px.line(
             temp_sn2,
-            x="semana",
+            x="eje_x",
             y="coctel",
             color="lugar",
             title="Top 3 lugares con mayor porcentaje de cocteles",
-            labels={"semana": "Semana", "coctel": "Porcentaje de cocteles %"},
+            labels={"eje_x": "Fecha (Viernes)" if usar_fechas_viernes_sn2 else "Semana", "coctel": "Porcentaje de cocteles %"},
             markers=True,
-            text=temp_sn2["coctel"] if mostrar_todos else ["" if semana != temp_sn2["semana"].max() else pct for semana, pct in zip(temp_sn2["semana"], temp_sn2["coctel"])]
+            text=temp_sn2["coctel"].map(lambda x: f"{x:.1f}") if mostrar_todos else None,
         )
 
         fig_sn2.update_traces(textposition="top center")
-        fig_sn2.update_xaxes(type="category")
 
         st.plotly_chart(fig_sn2)
-        st.write(f"Top 3 lugares con mayor porcentaje de cocteles en la última semana entre {fecha_inicio_sn2} y {fecha_fin_sn2} según {option_fuente_sn2}")    
+        st.write(f"Top 3 lugares con mayor porcentaje de cocteles en la última semana entre {fecha_inicio_sn2} y {fecha_fin_sn2} según {option_fuente_sn2}")  
+        temp_sn2_last['coctel'] = (temp_sn2_last['coctel']*100).map(lambda x: f"{x:.1f}")
         st.dataframe(temp_sn2_last, hide_index=True)
-        st.plotly_chart(fig_sn2)
 
     else:
         st.warning("No hay datos para mostrar")
 
-
-
     #%% 5.- Top 3 mejores radios, redes, tv usar dataframes de programas y redes
-
     st.subheader("6.- Top 3 mejores radios, redes, tv en lugar y fecha específica")
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        fecha_inicio_g5 = st.date_input(
-        "Fecha Inicio g6",
-        format="DD.MM.YYYY")
+        fecha_inicio_g6 = st.date_input("Fecha Inicio g6", format="DD.MM.YYYY")
     with col2:
-        fecha_fin_g5 = st.date_input(
-        "Fecha Fin g6",
-        format="DD.MM.YYYY")
-
+        fecha_fin_g6 = st.date_input("Fecha Fin g6", format="DD.MM.YYYY")
     with col3:
-        option_fuente_g5 = st.selectbox(
-        "Fuente g6",
-        ("Radio", "TV", "Redes"))
-
+        option_fuente_g6 = st.selectbox("Fuente g6", ("Radio", "TV", "Redes"))
     with col4:
-        option_lugar_g5 = st.selectbox(
-        "Lugar g6",
-        lugares_uniques)
+        option_lugar_g6 = st.selectbox("Lugar g6", lugares_uniques)
 
-    fecha_inicio_g5 = pd.to_datetime(fecha_inicio_g5,format='%Y-%m-%d')
-    fecha_fin_g5 = pd.to_datetime(fecha_fin_g5,format='%Y-%m-%d')
+    usar_fechas_viernes_g6 = st.toggle("Mostrar Fechas (Viernes de cada semana)", key="toggle_g6")
 
-    temp_g5_medio = temp_coctel_fuente_programas[(temp_coctel_fuente_programas['fecha_registro']>=fecha_inicio_g5) &
-                                            (temp_coctel_fuente_programas['fecha_registro']<=fecha_fin_g5) &
-                                            (temp_coctel_fuente_programas['lugar']==option_lugar_g5)]
+    fecha_inicio_g6 = pd.to_datetime(fecha_inicio_g6, format="%Y-%m-%d")
+    fecha_fin_g6 = pd.to_datetime(fecha_fin_g6, format="%Y-%m-%d")
 
-    temp_g5_redes = temp_coctel_fuente_fb[(temp_coctel_fuente_fb['fecha_registro']>=fecha_inicio_g5) &
-                                            (temp_coctel_fuente_fb['fecha_registro']<=fecha_fin_g5) &
-                                            (temp_coctel_fuente_fb['lugar']==option_lugar_g5)]
+    temp_g6_medio = temp_coctel_fuente_programas[
+        (temp_coctel_fuente_programas["fecha_registro"] >= fecha_inicio_g6)
+        & (temp_coctel_fuente_programas["fecha_registro"] <= fecha_fin_g6)
+        & (temp_coctel_fuente_programas["lugar"] == option_lugar_g6)
+    ]
 
-    if option_fuente_g5 == 'Radio':
-        temp_g5_medio = temp_g5_medio[temp_g5_medio['id_fuente']==1]
-    elif option_fuente_g5 == 'TV':
-        temp_g5_medio = temp_g5_medio[temp_g5_medio['id_fuente']==2]
-    elif option_fuente_g5 == 'Redes':
-        temp_g5_redes = temp_g5_redes[temp_g5_redes['id_fuente']==3]
+    temp_g6_redes = temp_coctel_fuente_fb[
+        (temp_coctel_fuente_fb["fecha_registro"] >= fecha_inicio_g6)
+        & (temp_coctel_fuente_fb["fecha_registro"] <= fecha_fin_g6)
+        & (temp_coctel_fuente_fb["lugar"] == option_lugar_g6)
+    ]
 
-    if option_fuente_g5 == "Redes" and not temp_g5_redes.empty:
-        temp_g5_redes["semana"] = temp_g5_redes['fecha_registro'].dt.to_period('W').apply(lambda r: r.start_time + pd.Timedelta(days=4))
-        temp_g5_redes_top = temp_g5_redes.groupby(['nombre_facebook_page']).agg({'coctel':'mean'}).reset_index()
-        temp_g5_redes_top = temp_g5_redes_top.sort_values('coctel',ascending=False).head(3).reset_index(drop=True)
-        # temp_g5_redes_top['coctel'] = temp_g5_redes_top['coctel'] * 100
-        temp_g5_redes_top['coctel'] = temp_g5_redes_top['coctel'].map('{:.0%}'.format)
-        st.write(temp_g5_redes_top)
+    if option_fuente_g6 == "Radio":
+        temp_g6_medio = temp_g6_medio[temp_g6_medio["id_fuente"] == 1]
+    elif option_fuente_g6 == "TV":
+        temp_g6_medio = temp_g6_medio[temp_g6_medio["id_fuente"] == 2]
+    elif option_fuente_g6 == "Redes":
+        temp_g6_redes = temp_g6_redes[temp_g6_redes["id_fuente"] == 3]
 
-        top_3_redes_list = temp_g5_redes_top['nombre_facebook_page'].tolist()
+    if option_fuente_g6 == "Redes" and not temp_g6_redes.empty:
+        temp_g6_redes["viernes"] = temp_g6_redes["fecha_registro"] + pd.to_timedelta(
+            (4 - temp_g6_redes["fecha_registro"].dt.weekday) % 7, unit="D"
+        )
 
-        temp_g5_redes = temp_g5_redes[temp_g5_redes['nombre_facebook_page'].isin(top_3_redes_list)]
-        temp_g5_redes = temp_g5_redes.groupby(['semana','nombre_facebook_page']).agg({'coctel':'mean'}).reset_index()
-        temp_g5_redes['coctel'] = temp_g5_redes['coctel'] * 100
-        # temp_g5_redes["coctel"] = temp_g5_redes["coctel"].map('{:.2f}'.format)
-        temp_g5_redes = temp_g5_redes.dropna()
+        temp_g6_redes_top = temp_g6_redes.groupby(["nombre_facebook_page"], as_index=False).agg({"coctel": "mean"})
+        temp_g6_redes_top = temp_g6_redes_top.sort_values("coctel", ascending=False).head(3)
 
-        fig_5 = px.line(temp_g5_redes,
-                        x='semana',
-                        y='coctel',
-                        color='nombre_facebook_page',
-                        title='Top 3 redes sociales con mayor porcentaje de cocteles',
-                        labels={'semana': 'Semana', 'coctel': 'Porcentaje de cocteles %'},
-                        markers=True,
-                        text=temp_g5_redes["coctel"] if mostrar_todos else ["" if semana != temp_g5_redes["semana"].max() else pct for semana, pct in zip(temp_g5_redes["semana"], temp_g5_redes["coctel"])]
-                        )
+        top_3_redes_list = temp_g6_redes_top["nombre_facebook_page"].tolist()
 
-        fig_5.update_traces(textposition="top center")
-        fig_5.update_xaxes(type="category")
+        temp_g6_redes = temp_g6_redes[temp_g6_redes["nombre_facebook_page"].isin(top_3_redes_list)]
+        temp_g6_redes = temp_g6_redes.groupby(["viernes", "nombre_facebook_page"], as_index=False).agg({"coctel": "mean"})
 
-        st.plotly_chart(fig_5)
+        temp_g6_redes["coctel"] = temp_g6_redes["coctel"] * 100
 
+        if usar_fechas_viernes_g6:
+            temp_g6_redes["eje_x"] = temp_g6_redes["viernes"].dt.strftime("%Y-%m-%d")
+        else:
+            temp_g6_redes["eje_x"] = temp_g6_redes["viernes"].dt.strftime("%Y-%m") + "-S" + (
+                (temp_g6_redes["viernes"].dt.day - 1) // 7 + 1
+            ).astype(str)
 
-    elif option_fuente_g5 != "Redes" and not temp_g5_medio.empty:
-        temp_g5_medio["semana"] = temp_g5_medio['fecha_registro'].dt.to_period('W').apply(lambda r: r.start_time + pd.Timedelta(days=4))    
-        temp_g5_medio_top = temp_g5_medio.groupby(['nombre_canal']).agg({'coctel':'mean'}).reset_index()
-        temp_g5_medio_top = temp_g5_medio_top.sort_values('coctel',ascending=False).head(3).reset_index(drop=True)
-        temp_g5_medio_top_2 = temp_g5_medio_top.copy()
-        # temp_g5_medio_top_2['coctel'] = temp_g5_medio_top_2['coctel'] * 100
-        temp_g5_medio_top_2["coctel"] = temp_g5_medio_top_2["coctel"].map('{:.0%}'.format)
-        st.write(temp_g5_medio_top_2)
+        fig_6 = px.line(
+            temp_g6_redes,
+            x="eje_x",
+            y="coctel",
+            color="nombre_facebook_page",
+            title="Top 3 redes sociales con mayor porcentaje de cocteles",
+            labels={"eje_x": "Fecha (Viernes)" if usar_fechas_viernes_g6 else "Semana", "coctel": "Porcentaje de cocteles %"},
+            markers=True,
+            text=temp_g6_redes["coctel"].map(lambda x: f"{x:.1f}") if mostrar_todos else None,
+        )
 
-        top_3_medio_list = temp_g5_medio_top['nombre_canal'].tolist()
+        fig_6.update_traces(textposition="top center")
+        st.plotly_chart(fig_6)
 
-        temp_g5_medio = temp_g5_medio[temp_g5_medio['nombre_canal'].isin(top_3_medio_list)]
-        temp_g5_medio = temp_g5_medio.groupby(['semana','nombre_canal']).agg({'coctel':'mean'}).reset_index()
+    elif option_fuente_g6 != "Redes" and not temp_g6_medio.empty:
+        temp_g6_medio["viernes"] = temp_g6_medio["fecha_registro"] + pd.to_timedelta(
+            (4 - temp_g6_medio["fecha_registro"].dt.weekday) % 7, unit="D"
+        )
 
-        temp_g5_medio['semana'] = temp_g5_medio['semana'].map(str)
-        temp_g5_medio = temp_g5_medio.dropna()
-        temp_g5_medio['coctel'] = temp_g5_medio['coctel'] * 100
-        # temp_g5_medio["coctel"] = temp_g5_medio["coctel"].map('{:.0%}'.format)
+        temp_g6_medio_top = temp_g6_medio.groupby(["nombre_canal"], as_index=False).agg({"coctel": "mean"})
+        temp_g6_medio_top = temp_g6_medio_top.sort_values("coctel", ascending=False).head(3)
 
-        fig_5 = px.line(temp_g5_medio,
-                        x='semana',
-                        y='coctel',
-                        color='nombre_canal',
-                        title='Top 3 medios con mayor porcentaje de cocteles',
-                        labels={'semana': 'Semana', 'coctel': 'Porcentaje de cocteles %'},
-                        markers=True,
-                        text=temp_g5_medio["coctel"] if mostrar_todos else ["" if semana != temp_g5_medio["semana"].max() else pct for semana, pct in zip(temp_g5_medio["semana"], temp_g5_medio["coctel"])]
-                        )
+        top_3_medio_list = temp_g6_medio_top["nombre_canal"].tolist()
 
-        fig_5.update_traces(textposition="top center")
-        fig_5.update_xaxes(type="category")
+        temp_g6_medio = temp_g6_medio[temp_g6_medio["nombre_canal"].isin(top_3_medio_list)]
+        temp_g6_medio = temp_g6_medio.groupby(["viernes", "nombre_canal"], as_index=False).agg({"coctel": "mean"})
 
-        st.plotly_chart(fig_5)
+        temp_g6_medio["coctel"] = temp_g6_medio["coctel"] * 100
 
+        if usar_fechas_viernes_g6:
+            temp_g6_medio["eje_x"] = temp_g6_medio["viernes"].dt.strftime("%Y-%m-%d")
+        else:
+            temp_g6_medio["eje_x"] = temp_g6_medio["viernes"].dt.strftime("%Y-%m") + "-S" + (
+                (temp_g6_medio["viernes"].dt.day - 1) // 7 + 1
+            ).astype(str)
+
+        fig_6 = px.line(
+            temp_g6_medio,
+            x="eje_x",
+            y="coctel",
+            color="nombre_canal",
+            title="Top 3 medios con mayor porcentaje de cocteles",
+            labels={"eje_x": "Fecha (Viernes)" if usar_fechas_viernes_g6 else "Semana", "coctel": "Porcentaje de cocteles %"},
+            markers=True,
+            text=temp_g6_medio["coctel"].map(lambda x: f"{x:.1f}") if mostrar_todos else None,
+        )
+
+        fig_6.update_traces(textposition="top center")
+        st.plotly_chart(fig_6)
 
     else:
         st.warning("No hay datos para mostrar")
+
     #%% 6.- Crecimiento de cocteles por macroregion
 
     # Para radio y redes las macroregiones son: Macro región Sur 1 – Tacna, Puno y Cusco (radio y redes),
@@ -652,14 +687,12 @@ def coctel_dashboard():
     #                                           Macro región Centro – Lima, Ica, Huánuco (radio y redes)
     #                                           Macro región Unacem – Lima Sur, Cañete, Tarma (radio y redes) 
     # Para tv la macroregion es: Macro región TV: Ayacucho, Piura y Arequipa
-
-
     macroregiones_radio_redes = ["Macro región Sur 1", "Macro región Sur 2", "Macro región Norte", "Macro región Centro", "Macro región UNACEM"]
     macroregiones_tv = ["Macro región TV"]
 
     macroregiones = {
         "Macro región Sur 1": ["Tacna", "Puno", "Cusco"],
-        "Macro región Sur 2": ["Ayacucho", "Arequipa"],	
+        "Macro región Sur 2": ["Ayacucho", "Arequipa"],
         "Macro región Norte": ["Piura", "Trujillo"],
         "Macro región Centro": ["Lima", "Ica", "Huanuco"],
         "Macro región UNACEM": ["Lima Sur", "Cañete", "Tarma"],
@@ -670,83 +703,74 @@ def coctel_dashboard():
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        fecha_inicio_g6 = st.date_input(
-        "Fecha Inicio g7",
-        format="DD.MM.YYYY")
+        fecha_inicio_g7 = st.date_input("Fecha Inicio g7", format="DD.MM.YYYY")
     with col2:
-        fecha_fin_g6 = st.date_input(
-        "Fecha Fin g7",
-        format="DD.MM.YYYY")
+        fecha_fin_g7 = st.date_input("Fecha Fin g7", format="DD.MM.YYYY")
     with col3:
-        option_fuente_g6 = st.selectbox(
-        "Fuente g7",
-        ("Radio", "TV", "Redes"))
+        option_fuente_g7 = st.selectbox("Fuente g7", ("Radio", "TV", "Redes"))
     with col4:
-        if option_fuente_g6 in ["Radio", "Redes"]:
-            option_macroregion_g6 = st.selectbox(
-                "Macroregión g6",
-                macroregiones_radio_redes)
-        elif option_fuente_g6 == "TV":
-            option_macroregion_g6 = st.selectbox(
-                "Macroregión g6",
-                macroregiones_tv)
+        if option_fuente_g7 in ["Radio", "Redes"]:
+            option_macroregion_g7 = st.selectbox("Macroregión g7", macroregiones_radio_redes)
+        elif option_fuente_g7 == "TV":
+            option_macroregion_g7 = st.selectbox("Macroregión g7", macroregiones_tv)
 
+    usar_fechas_viernes_g7 = st.toggle("Mostrar Fechas (Viernes de cada semana)", key="toggle_g7")
 
-    fecha_inicio_g6 = pd.to_datetime(fecha_inicio_g6,format='%Y-%m-%d')
-    fecha_fin_g6 = pd.to_datetime(fecha_fin_g6,format='%Y-%m-%d')
+    fecha_inicio_g7 = pd.to_datetime(fecha_inicio_g7, format="%Y-%m-%d")
+    fecha_fin_g7 = pd.to_datetime(fecha_fin_g7, format="%Y-%m-%d")
 
-    temp_g6 = temp_coctel_fuente[(temp_coctel_fuente['fecha_registro']>=fecha_inicio_g6) &
-                                    (temp_coctel_fuente['fecha_registro']<=fecha_fin_g6)]
+    temp_g7 = temp_coctel_fuente[
+        (temp_coctel_fuente["fecha_registro"] >= fecha_inicio_g7)
+        & (temp_coctel_fuente["fecha_registro"] <= fecha_fin_g7)
+    ]
 
-    if option_fuente_g6 == 'Radio':
-        temp_g6 = temp_g6[temp_g6['id_fuente']==1]
-    elif option_fuente_g6 == 'TV':
-        temp_g6 = temp_g6[temp_g6['id_fuente']==2]
-    elif option_fuente_g6 == 'Redes':
-        temp_g6 = temp_g6[temp_g6['id_fuente']==3]
+    if option_fuente_g7 == "Radio":
+        temp_g7 = temp_g7[temp_g7["id_fuente"] == 1]
+    elif option_fuente_g7 == "TV":
+        temp_g7 = temp_g7[temp_g7["id_fuente"] == 2]
+    elif option_fuente_g7 == "Redes":
+        temp_g7 = temp_g7[temp_g7["id_fuente"] == 3]
 
-    if not temp_g6.empty:
-        departamentos = macroregiones.get(option_macroregion_g6, [])
-        temp_g6 = temp_g6[temp_g6['lugar'].isin(departamentos)]
-        temp_g6["semana"] = temp_g6['fecha_registro'].dt.to_period('W').apply(lambda r: r.start_time + pd.Timedelta(days=4))
-        temp_g6 = temp_g6.groupby(['semana', 'lugar']).agg(coctel_mean = ("coctel", "mean")).reset_index()
-        temp_g6["semana"] = temp_g6["semana"].dt.strftime('%Y-%m-%d')
-
-        # a dos decimales
-
-        temp_g6["coctel_mean"] = temp_g6["coctel_mean"] * 100 # a dos decimales
-        temp_g6 = temp_g6.dropna()
-
-        fig_6 = go.Figure()
-
-        for lugar in temp_g6['lugar'].unique():
-            df_temp = temp_g6[temp_g6['lugar'] == lugar]
-            fig_6.add_trace(go.Scatter(
-                x=df_temp['semana'], 
-                y=df_temp['coctel_mean'],
-                mode='lines+markers+text' if mostrar_todos else 'lines+markers',
-                name=lugar,
-                text=df_temp["coctel_mean"] if mostrar_todos else ["" if semana != df_temp["semana"].max() else pct for semana, pct in zip(df_temp["semana"], df_temp["coctel_mean"])],
-                textposition="top center",
-                line=dict(width=2),
-                marker=dict(size=6)
-            ))
-
-        fig_6.update_layout(
-            title=f"Crecimiento de cocteles por macroregión en {option_macroregion_g6} entre {fecha_inicio_g6.strftime('%d-%m-%Y')} y {fecha_fin_g6.strftime('%d-%m-%Y')}",
-            xaxis_title='Semana',
-            yaxis_title='Crecimiento de Cocteles (%)',
-            template='plotly_white',
-            xaxis=dict(type="category")
+    if not temp_g7.empty:
+        departamentos = macroregiones.get(option_macroregion_g7, [])
+        temp_g7 = temp_g7[temp_g7["lugar"].isin(departamentos)]
+        
+        temp_g7["viernes"] = temp_g7["fecha_registro"] + pd.to_timedelta(
+            (4 - temp_g7["fecha_registro"].dt.weekday) % 7, unit="D"
         )
 
-        # Mostrar el gráfico
-        st.plotly_chart(fig_6)
-        st.write("Nota: Los valores muestran el porcentaje de cocteles en cada semana tomando como referencia el viernes")
+        temp_g7 = temp_g7.groupby(["viernes", "lugar"], as_index=False).agg(coctel_mean=("coctel", "mean"))
+        temp_g7["coctel_mean"] = temp_g7["coctel_mean"] * 100
 
+        if usar_fechas_viernes_g7:
+            temp_g7["eje_x"] = temp_g7["viernes"].dt.strftime("%Y-%m-%d")
+        else:
+            temp_g7["eje_x"] = temp_g7["viernes"].dt.strftime("%Y-%m") + "-S" + (
+                (temp_g7["viernes"].dt.day - 1) // 7 + 1
+            ).astype(str)
+
+        temp_g7 = temp_g7.sort_values("viernes")
+
+        fig_7 = px.line(
+            temp_g7,
+            x="eje_x",
+            y="coctel_mean",
+            color="lugar",
+            title=f"Crecimiento de cocteles por macroregión en {option_macroregion_g7} entre {fecha_inicio_g7.strftime('%d-%m-%Y')} y {fecha_fin_g7.strftime('%d-%m-%Y')}",
+            labels={"eje_x": "Fecha (Viernes)" if usar_fechas_viernes_g7 else "Semana", "coctel_mean": "Porcentaje de cocteles %"},
+            markers=True,
+            text=temp_g7["coctel_mean"].map(lambda x: f"{x:.1f}") if mostrar_todos else None,
+        )
+
+        fig_7.update_traces(textposition="top center")
+        fig_7.update_xaxes(type="category" if not usar_fechas_viernes_g7 else "date")
+
+        st.plotly_chart(fig_7)
+        st.write("Nota: Los valores muestran el porcentaje de cocteles en cada semana tomando como referencia el viernes")
 
     else:
         st.warning("No hay datos para mostrar")
+
 
     #%% 7.- Grafico de barras contando posiciones
 
@@ -922,7 +946,7 @@ def coctel_dashboard():
         conteo_total_g9 = temp_g9.groupby(['coctel']).size().reset_index(name='count')
         conteo_total_g9['Coctel'] = conteo_total_g9['coctel'].map(coctel_dict)
         conteo_total_g9['Porcentaje'] = conteo_total_g9['count'] / conteo_total_g9['count'].sum()
-        conteo_total_g9['Porcentaje'] = conteo_total_g9['Porcentaje'].map('{:.0%}'.format)
+        # conteo_total_g9['Porcentaje'] = conteo_total_g9['Porcentaje'].map('{:.0%}'.format)
         st.write(f"Porcentaje de acontecimientos con coctel en {option_lugar_g9} entre {fecha_inicio_g9} y {fecha_fin_g9}")
         fig_9 = px.pie(
             conteo_total_g9,
@@ -931,8 +955,8 @@ def coctel_dashboard():
             title='Porcentaje de acontecimientos con coctel',
             hole=0.3,
             color='Coctel',
-            color_discrete_map={'Sin coctel': 'orange', 'Con coctel': 'Blue'},
-            text=conteo_total_g9['Porcentaje'] if mostrar_todos else None  # Muestra porcentajes si mostrar_todos es True
+            color_discrete_map={'Sin coctel': 'orange', 'Con coctel': 'Blue'}
+            # text=conteo_total_g9['Porcentaje'].map(lambda x: f"{x:.1f}") if mostrar_todos else None  # Muestra porcentajes si mostrar_todos es True
         )
 
         fig_9.update_traces(
@@ -1042,7 +1066,7 @@ def coctel_dashboard():
                     y='Cantidad', 
                     color='Fuente', 
                     text='Cantidad',
-                    title="Evolución Semanal de Cocteles Generados por Medio",
+                    title="Evolución Semanal de Cantidad de Medios (Canales) que generan Cocteles",
                     labels={'Cantidad': 'Número de Cocteles', 'fecha_mes': 'Mes', 'Fuente': 'Fuente'},
                     barmode='stack')
         st.plotly_chart(fig, use_container_width=True)
@@ -1191,19 +1215,23 @@ def coctel_dashboard():
         conteo_notas_20_pct["neutral_pct"] = ((conteo_notas_20_pct['neutral'] / conteo_notas_20_pct['total']) * 100).round(1)
 
         conteo_notas_20_pct = conteo_notas_20_pct[["año_mes", "a_favor_pct", "en_contra_pct", "neutral_pct"]]
+        conteo_notas_20_pct=conteo_notas_20_pct.dropna()
+        long_df = conteo_notas_20_pct.melt(id_vars=["año_mes"], var_name="Tipo de Nota", value_name="Porcentaje")
+        
         fig_20 = px.bar(
-            conteo_notas_20_pct,
-            x='año_mes',
-            y=['a_favor_pct', 'en_contra_pct', 'neutral_pct'],
-            barmode='stack',
+            long_df,
+            x="año_mes",
+            y="Porcentaje",
+            color="Tipo de Nota",
+            barmode="stack",
             title=titulo_g20,
-            labels={'año_mes': 'Año y Mes',
-                    'value': 'Porcentaje',
-                    'variable': 'Tipo de Nota'},
-            text=conteo_notas_20_pct[['a_favor_pct', 'en_contra_pct', 'neutral_pct']].applymap(lambda x: f"{x}%" if mostrar_todos else ""),
-            color_discrete_map={'a_favor_pct': 'blue',
-                                'en_contra_pct': 'red',
-                                'neutral_pct': 'gray'}
+            labels={"año_mes": "Año y Mes", "Porcentaje": "Porcentaje"},
+            text=long_df["Porcentaje"].map("{:.1f}%".format) if mostrar_todos else None,
+            color_discrete_map={
+                "a_favor_pct": "blue",
+                "en_contra_pct": "red",
+                "neutral_pct": "gray",
+            },
         )
 
         fig_20.update_layout(barmode='stack', xaxis={'categoryorder': 'category ascending'})
@@ -1439,7 +1467,7 @@ def coctel_dashboard():
 
         df_top_10_24['porcentaje'] = df_top_10_24['frecuencia']/df_grouped_24['frecuencia'].sum()
         df_top_10_24["porcentaje"] = df_top_10_24["porcentaje"]*100
-        df_top_10_24['porcentaje'] = df_top_10_24['porcentaje'].apply(lambda x:"{:.2f}".format(x))
+        # df_top_10_24['porcentaje'] = df_top_10_24['porcentaje'].apply(lambda x:"{:.2f}".format(x))
 
         fig_24 = px.bar(
             df_top_10_24,
@@ -1447,7 +1475,7 @@ def coctel_dashboard():
             y="descripcion",
             title=titulo,
             orientation='h',
-            text=df_top_10_24["porcentaje"] if mostrar_todos else None,  # Muestra valores si mostrar_todos es True
+            text=df_top_10_24["porcentaje"].map(lambda x: f"{x:.1f}") if mostrar_todos else None,  # Muestra valores si mostrar_todos es True
             labels={'porcentaje': 'Porcentaje %', 'descripcion': 'Temas'}
         )
 
@@ -1705,32 +1733,48 @@ def coctel_dashboard():
     else:
         st.warning("No hay datos para mostrar")
 
-
     #%% 28.- gráfico de barras sobre actores y posiciones
     st.subheader("21.- Porcentaje de cóctel de todos los medios")
 
     col1, col2 = st.columns(2)
-
     with col1:
-        fecha_g28 = st.date_input("Fecha g21", format="DD.MM.YYYY")
+        ano_inicio_g28 = st.selectbox("Año de inicio g21", anos, len(anos)-1)
+        mes_inicio_g28 = st.selectbox("Mes de inicio g21", meses, index=11)
+    with col2:
+        ano_fin_g28 = st.selectbox("Año de fin g21", anos, index=len(anos)-1)
+        mes_fin_g28 = st.selectbox("Mes de fin g21", meses, index=11)
 
-    # Convertir la fecha seleccionada al formato adecuado
-    fecha_g28 = pd.to_datetime(fecha_g28, format='%Y-%m-%d')
+    col1, col2 = st.columns(2)
+    with col1:
+        option_regiones_g28 = st.multiselect(
+            "Lugar g21",
+            temp_coctel_fuente['lugar'].unique().tolist(),
+            default=temp_coctel_fuente['lugar'].unique().tolist()
+        )
+
+    fecha_inicio_g28 = pd.to_datetime(f"{ano_inicio_g28}-{meses.index(mes_inicio_g28) + 1}-01")
+    fecha_fin_g28 = pd.to_datetime(f"{ano_fin_g28}-{meses.index(mes_fin_g28) + 1}-01")  
+
     temp_g28 = temp_coctel_fuente.copy()
-    temp_g28['fecha_mes'] = temp_g28['fecha_registro'].dt.strftime('%Y-%m')
-    temp_g28 = temp_g28[(temp_g28['fecha_mes'] == fecha_g28.strftime('%Y-%m'))]
+    temp_g28['fecha_registro'] = pd.to_datetime(temp_g28['fecha_registro'])
+    temp_g28['fecha_mes'] = temp_g28['fecha_registro'].dt.to_period('M').dt.to_timestamp()
+    temp_g28 = temp_g28[
+        (temp_g28['fecha_mes'] >= fecha_inicio_g28) & 
+        (temp_g28['fecha_mes'] <= fecha_fin_g28) &
+        (temp_g28['lugar'].isin(option_regiones_g28))
+        ]
 
-    fuentes_disponibles = ['Radio', 'Redes', 'TV']
-    fuentes_seleccionadas = st.multiselect("Selecciona las fuentes a mostrar", fuentes_disponibles, default=fuentes_disponibles)
+    # fuentes_disponibles = ['Radio', 'Redes', 'TV']
+    # fuentes_seleccionadas = st.multiselect("Selecciona las fuentes a mostrar", fuentes_disponibles, default=fuentes_disponibles)
 
     if not temp_g28.empty:
-        temp_g28 = temp_g28.groupby(['fecha_mes', 'id_fuente', 'lugar']).agg({'coctel': 'sum'}).reset_index()
+        temp_g28 = temp_g28.groupby(['id_fuente', 'lugar']).agg({'coctel': 'sum'}).reset_index()
+        total_por_lugar = temp_g28.groupby(['lugar'])['coctel'].transform('sum')
         temp_g28['Fuente'] = temp_g28['id_fuente'].map(id_fuente_dict)
-        
-        total_por_lugar = temp_g28.groupby(['fecha_mes', 'lugar'])['coctel'].transform('sum')
         temp_g28['porcentaje_coctel'] = (temp_g28['coctel'] / total_por_lugar) * 100
+        temp_g28 = temp_g28.dropna()
         
-        temp_g28 = temp_g28[temp_g28['Fuente'].isin(fuentes_seleccionadas)]
+        # temp_g28 = temp_g28[temp_g28['Fuente'].isin(fuentes_seleccionadas)]
         
         promedios = temp_g28.groupby('Fuente')['porcentaje_coctel'].mean().to_dict()
         
@@ -1740,9 +1784,9 @@ def coctel_dashboard():
             y="porcentaje_coctel",
             color="Fuente",
             barmode="group",
-            title=f"Porcentaje de cóctel de todos los medios - {fecha_g28.strftime('%B %Y')}",
+            title=f"Porcentaje de cóctel de todos los medios - {fecha_inicio_g28.strftime("%Y-%m")} hasta {fecha_fin_g28.strftime("%Y-%m")}",
             labels={"lugar": "Regiones", "porcentaje_coctel": "Porcentaje de Cóctel"},
-            text=temp_g28["porcentaje_coctel"].map("{:.2f}%".format) if mostrar_todos else None,  # Muestra valores si mostrar_todos es True
+            text=temp_g28["porcentaje_coctel"].map("{:.1f}%".format) if mostrar_todos else None,  # Muestra valores si mostrar_todos es True
             color_discrete_map={"Radio": "blue", "Redes": "red", "TV": "gray"},
         )
 
@@ -1766,24 +1810,47 @@ def coctel_dashboard():
         st.warning("No hay datos para mostrar")
 
     #%% 29.- gráfico de barras sobre actores y posiciones
-    st.subheader("22.- Porcentaje de cóctel en los ultimos 3 meses por fuente")
+    st.subheader("22.- Porcentaje de cóctel en los últimos 3 meses por fuente")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        ano_fin_g29 = st.selectbox("Año de referencia g22", anos, index=len(anos)-1)
+        mes_fin_g29 = st.selectbox("Mes de referencia g22", meses, index=11)
+    
+    option_regiones_g29 = st.multiselect(
+        "Lugar g22",
+        temp_coctel_fuente['lugar'].unique().tolist(),
+        default=temp_coctel_fuente['lugar'].unique().tolist()
+    )
+
     fuentes_disponibles = ['Radio', 'Redes', 'TV']
     fuente_g29 = st.selectbox("Fuente g22", fuentes_disponibles)
 
+    fecha_fin_g29 = pd.to_datetime(f"{ano_fin_g29}-{meses.index(mes_fin_g29) + 1}-01")
+    fecha_inicio_g29 = fecha_fin_g29 - pd.DateOffset(months=2)  # Retrocede 2 meses para incluir 3 en total
+
     temp_g29 = temp_coctel_fuente.copy()
-    temp_g29['fecha_mes'] = temp_g29['fecha_registro'].dt.strftime('%Y-%m')
-    ultimos_meses = sorted(temp_g29['fecha_mes'].unique())[-3:]
-    temp_g29 = temp_g29[temp_g29['fecha_mes'].isin(ultimos_meses)]
+    temp_g29['fecha_registro'] = pd.to_datetime(temp_g29['fecha_registro'])
+    temp_g29['fecha_mes'] = temp_g29['fecha_registro'].dt.to_period('M').dt.to_timestamp()
+
+    temp_g29 = temp_g29[
+        (temp_g29['fecha_mes'] >= fecha_inicio_g29) & 
+        (temp_g29['fecha_mes'] <= fecha_fin_g29) & 
+        (temp_g29['lugar'].isin(option_regiones_g29))
+    ]
+
     temp_g29['Fuente'] = temp_g29['id_fuente'].map(id_fuente_dict)
 
     temp_g29 = temp_g29[temp_g29['Fuente'] == fuente_g29]
-    temp_g29 = temp_g29.groupby(['fecha_mes', 'lugar']).agg({'coctel': 'sum'}).reset_index()
-    total_por_lugar = temp_g29.groupby(['fecha_mes', 'lugar'])['coctel'].transform('sum')
-    temp_g29['porcentaje_coctel'] = (temp_g29['coctel'] / total_por_lugar) * 100
-    temp_g29 = temp_g29.dropna()
-    promedio = temp_g29['porcentaje_coctel'].mean()
 
     if not temp_g29.empty:
+        temp_g29 = temp_g29.groupby(['fecha_mes', 'lugar'], as_index=False).agg({'coctel': 'sum'})
+        total_por_lugar = temp_g29.groupby(['fecha_mes'])['coctel'].transform('sum')
+        temp_g29['porcentaje_coctel'] = (temp_g29['coctel'] / total_por_lugar) * 100
+        temp_g29 = temp_g29.dropna()
+
+        promedio = temp_g29['porcentaje_coctel'].mean()
+
         fig = px.bar(
             temp_g29,
             x="lugar",
@@ -1793,11 +1860,11 @@ def coctel_dashboard():
             title=f"Porcentaje de cóctel {fuente_g29} - Últimos 3 meses",
             labels={"lugar": "Región", "porcentaje_coctel": "Porcentaje de Cóctel"},
             color_discrete_sequence=["lightblue", "darkblue", "navy"],
-            text=temp_g29["porcentaje_coctel"].map("{:.2f}%".format) if mostrar_todos else None  # Solo muestra los valores si mostrar_todos es True
+            text=temp_g29["porcentaje_coctel"].map("{:.1f}%".format) if mostrar_todos else None
         )
 
         fig.update_traces(
-            textposition="outside" if mostrar_todos else "none"  # Posiciona los valores fuera de las barras si mostrar_todos es True
+            textposition="outside" if mostrar_todos else "none"
         )
 
         st.plotly_chart(fig)
@@ -1807,41 +1874,59 @@ def coctel_dashboard():
 
     #%% 30.- gráfico de barras sobre actores y posiciones
     st.subheader("23.- Gráfico Mensual Lineal sobre la evolución de Radio, Redes y TV")
+
     col1, col2 = st.columns(2)
     with col1:
         fecha_inicio_g30 = st.date_input(
-        "Fecha Inicio g23",
-        format="DD.MM.YYYY")
+            "Fecha Inicio g23",
+            format="DD.MM.YYYY"
+        )
     with col2:
         fecha_fin_g30 = st.date_input(
-        "Fecha Fin g23",
-        format="DD.MM.YYYY")
+            "Fecha Fin g23",
+            format="DD.MM.YYYY"
+        )
 
     col1, col2 = st.columns(2)
     with col1:
-        option_lugar_g30 = st.multiselect("Lugar g23",
-                                        lugares_uniques,
-                                        lugares_uniques
-                                        )
+        option_lugar_g30 = st.multiselect(
+            "Lugar g23",
+            lugares_uniques,
+            lugares_uniques
+        )
+
     fecha_inicio_g30 = pd.to_datetime(fecha_inicio_g30, format='%Y-%m-%d')
     fecha_fin_g30 = pd.to_datetime(fecha_fin_g30, format='%Y-%m-%d')
+
     temp_g30 = temp_coctel_fuente.copy()
     temp_g30['fecha_mes'] = temp_g30['fecha_registro'].dt.strftime('%Y-%m')
-    temp_g30 = temp_g30[(temp_g30['fecha_registro']>=fecha_inicio_g30) &
-                                    (temp_g30['fecha_registro']<=fecha_fin_g30) &
-                                    (temp_g30['lugar'].isin(option_lugar_g30))]
+    temp_g30 = temp_g30[
+        (temp_g30['fecha_registro'] >= fecha_inicio_g30) & 
+        (temp_g30['fecha_registro'] <= fecha_fin_g30) & 
+        (temp_g30['lugar'].isin(option_lugar_g30))
+    ]
+
     temp_g30['Fuente'] = temp_g30['id_fuente'].map(id_fuente_dict)
 
     if not temp_g30.empty:
-        temp_g30 = temp_g30[['coctel','fecha_mes','Fuente']]
-        temp_g30 = temp_g30.groupby(['fecha_mes','Fuente']).agg({'coctel':'sum'}).reset_index()
-        fig = px.line(temp_g30, 
-                    x='fecha_mes', 
-                    y='coctel', 
-                    color='Fuente',
-                    markers=True,  
-                    color_discrete_map={'Radio': 'gray', 'Redes': 'red', 'TV': 'blue'}, 
-                    title="Gráfico Mensual Lineal sobre la evolución de Radio, Redes y TV")
+        temp_g30 = temp_g30[['coctel', 'fecha_mes', 'Fuente']]
+        temp_g30 = temp_g30.groupby(['fecha_mes', 'Fuente'], as_index=False).agg({'coctel': 'sum'})
+
+        total_g30 = temp_g30.groupby('fecha_mes', as_index=False).agg({'coctel': 'sum'})
+        total_g30['Fuente'] = "Total"  # Crear la categoría "Total"
+
+        temp_g30 = pd.concat([temp_g30, total_g30], ignore_index=True)
+
+        fig = px.line(
+            temp_g30,
+            x='fecha_mes', 
+            y='coctel', 
+            color='Fuente',
+            markers=True,  
+            color_discrete_map={'Radio': 'gray', 'Redes': 'red', 'TV': 'blue', 'Total': 'green'},  # Línea Total en verde
+            title="Gráfico Mensual Lineal sobre la evolución de Radio, Redes y TV"
+        )
+
         fig.update_layout(
             xaxis_title="Mes y Año",  
             yaxis_title="Cantidad de Menciones", 
@@ -1850,10 +1935,13 @@ def coctel_dashboard():
             plot_bgcolor="white",
             font=dict(size=12),
             margin=dict(l=50, r=50, t=50, b=50)
-            )
+        )
+
         st.plotly_chart(fig)
+
     else:
         st.warning("No hay datos para mostrar")
+
 
 
     #%% 31.- gráfico de barras sobre actores y posiciones
