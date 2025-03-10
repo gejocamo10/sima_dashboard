@@ -5,3 +5,4 @@ app/.streamlit/secrets.toml
 observaciones.xlsx
 temp_coctel_completo.csv
 test.ipynb
+.devcointainer

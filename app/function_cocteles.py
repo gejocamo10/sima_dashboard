@@ -812,7 +812,7 @@ def coctel_dashboard():
         
 
         if usar_fechas_viernes_g7:
-            temp_g7["eje_x"] = temp_g7["viernes"].dt.strftime("%Y-%m-%d")
+            temp_g7["eje_x"] = temp_g7["viernes"].dt.strftime("%d-%m-%Y")
         else:
             temp_g7["eje_x"] = temp_g7["viernes"].dt.strftime("%Y-%m") + "-S" + (
                 (temp_g7["viernes"].dt.day - 1) // 7 + 1
@@ -829,14 +829,16 @@ def coctel_dashboard():
             text=temp_g7["coctel_mean"].map(lambda x: f"{x:.1f}") if mostrar_todos else None,
         )
         fig_7.update_traces(textposition="top center")
-        fig1.update_layout(xaxis=dict(tickformat="%d-%m-%Y" if usar_fechas_viernes_g3 else ""))
+        fig_7.update_layout(xaxis=dict(tickformat="%d-%m-%Y" if usar_fechas_viernes_g7 else ""))
         fig_7.update_xaxes(
+
             title_text="Fecha (Viernes)" if usar_fechas_viernes_g7 else "Semana",
             tickangle=45,  
             tickmode="array" if usar_fechas_viernes_g7 else "linear",  # Usa "auto" en vez de "linear" para evitar inconsistencias
             tickvals=temp_g7["eje_x"] if usar_fechas_viernes_g7 else None,  # Evita duplicados en fechas
             ticktext=temp_g7["eje_x"] if usar_fechas_viernes_g7 else None,  # Se asegura que los textos coincidan con los valores
             # type="category" if not usar_fechas_viernes_g7 else "date",  # Mantiene el formato correcto del eje X
+            tickformat="%d-%m-%Y" if usar_fechas_viernes_g7 else ""
         )        
 
 
@@ -1868,7 +1870,7 @@ def coctel_dashboard():
         )
 
         fig.update_layout(
-            font=dict(size=6)
+            font=dict(size=8)
         )
 
         fig.update_traces(
@@ -1980,7 +1982,7 @@ def coctel_dashboard():
             text=temp_g29["porcentaje_coctel"].map("{:.1f}%".format)
         )
         fig.update_layout(
-            font=dict(size=100)
+            font=dict(size=15)
         )
 
         fig.update_traces(
@@ -2117,6 +2119,9 @@ def coctel_dashboard():
             labels={'coctel': '', 'mensaje_fuerza': ''},
             title=titulo_g31,
             color_discrete_sequence=['red']
+        )
+        fig.update_layout(
+            font=dict(size=8)
         )
         fig.update_traces(
             textposition="outside" if mostrar_todos else "none"
