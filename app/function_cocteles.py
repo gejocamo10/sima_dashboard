@@ -1133,19 +1133,19 @@ def coctel_dashboard():
 
         st.dataframe(conteo_canal_g13, hide_index=True, width=300)
 
-        temp_g13_coctel['Fuente'] = temp_g13_coctel['id_fuente'].astype(int).map(id_fuente_dict)
-        temp_g13_coctel['fecha_mes'] = temp_g13_coctel['fecha_registro'].dt.to_period('M').astype(str)
-        temp_g13_graph = temp_g13_coctel.groupby(['fecha_mes', 'Fuente']).size().reset_index(name='Cantidad')
+        conteo_canal_g13_melted = conteo_canal_g13.melt(id_vars=['lugar'], var_name='Fuente', value_name='Cantidad')
 
-        y_max = temp_g13_graph['Cantidad'].max() * 1.1  # 10% por encima del máximo
-        fig = px.bar(temp_g13_graph, 
-                    x='fecha_mes', 
+        y_max = conteo_canal_g13_melted['Cantidad'].max() * 1.1  # 10% por encima del máximo
+
+        fig = px.bar(conteo_canal_g13_melted, 
+                    x='lugar', 
                     y='Cantidad', 
                     color='Fuente', 
                     text='Cantidad',
-                    title="Evolución Semanal de Cantidad de Medios (Canales) que generan Cocteles",
-                    labels={'Cantidad': 'Número de Cocteles', 'fecha_mes': 'Mes', 'Fuente': 'Fuente'},
+                    title="Cantidad de Medios (Canales) que generan Cocteles por Lugar",
+                    labels={'Cantidad': 'Número de Medios', 'lugar': 'Lugar', 'Fuente': 'Fuente'},
                     barmode='stack')
+
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.warning("No hay datos para mostrar")
