@@ -1867,9 +1867,12 @@ def coctel_dashboard():
             color_discrete_map={"Radio": "blue", "Redes": "red", "TV": "gray"},
         )
 
+        fig.update_layout(
+            font=dict(size=6)
+        )
+
         fig.update_traces(
-            textposition="outside" if mostrar_todos else "none",  # Posiciona el texto fuera si mostrar_todos es True
-            textfont_size=1000  # Hace aún más grandes los porcentajes
+            textposition="outside" if mostrar_todos else "none"
         )
 
         # Agregar líneas de promedio por fuente
@@ -1976,10 +1979,12 @@ def coctel_dashboard():
             color_discrete_map=color_mapping,
             text=temp_g29["porcentaje_coctel"].map("{:.1f}%".format)
         )
+        fig.update_layout(
+            font=dict(size=100)
+        )
 
         fig.update_traces(
-            textposition="outside",
-            textfont_size=1000  # Hace aún más grandes los porcentajes
+            textposition="outside" if mostrar_todos else "none"
         )
 
         st.plotly_chart(fig)
@@ -2047,7 +2052,7 @@ def coctel_dashboard():
             yaxis_title="Impactos de Coctel", 
             xaxis=dict(tickangle=45, showgrid=False),  
             yaxis=dict(showgrid=True), 
-            plot_bgcolor="white",
+            # plot_bgcolor="white",
             font=dict(size=12),
             margin=dict(l=50, r=50, t=50, b=50)
         )
