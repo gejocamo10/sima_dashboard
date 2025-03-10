@@ -1156,14 +1156,22 @@ def coctel_dashboard():
     st.subheader("13.- Conteo mensual de la cantidad de coctel utilizado por región, dividido en redes, radio y tv")
 
     col1, col2 = st.columns(2)
-
     with col1:
-        year_inicio_g18 = st.selectbox("Año Inicio g13", list(range(2023, 2025)), index=0)
-        month_inicio_g18 = st.selectbox("Mes Inicio g13", list(range(1, 13)), index=0)
-
+        year_inicio_g18 = st.selectbox("Año de inicio g13", anos, len(anos)-1)
+        month_inicio_g18 = st.selectbox("Mes de inicio g13", list(range(1,13)), index=11)
     with col2:
-        year_fin_g18 = st.selectbox("Año Fin g13", list(range(2023, 2025)), index=1)
-        month_fin_g18 = st.selectbox("Mes Fin g13", list(range(1, 13)), index=11)
+        year_fin_g18 = st.selectbox("Año de fin g13", anos, index=len(anos)-1)
+        month_fin_g18 = st.selectbox("Mes de fin g13", list(range(1,13)), index=11)
+
+    # col1, col2 = st.columns(2)
+
+    # with col1:
+    #     year_inicio_g18 = st.selectbox("Año Inicio g13", list(range(2023, 2025)), index=0)
+    #     month_inicio_g18 = st.selectbox("Mes Inicio g13", list(range(1, 13)), index=0)
+
+    # with col2:
+    #     year_fin_g18 = st.selectbox("Año Fin g13", list(range(2023, 2025)), index=1)
+    #     month_fin_g18 = st.selectbox("Mes Fin g13", list(range(1, 13)), index=11)
 
 
     option_lugar_g18 = st.multiselect("Lugar g13",
@@ -1193,17 +1201,19 @@ def coctel_dashboard():
 
         temp_g18["año_mes"] = temp_g18["año"].astype(str) + "-" + temp_g18["mes"].astype(str)
 
+        temp_g18_copy = temp_g18.copy()
+
         # Agrupar los datos por lugar, año_mes, y Fuente para contar el total de cocteles
-        conteo_cocteles_lugar = temp_g18.groupby(['lugar', 'año_mes', 'Fuente']).agg({'coctel': 'sum'}).reset_index()
+        temp_g18 = temp_g18_copy.groupby(['lugar', 'año_mes', 'Fuente']).agg({'coctel': 'sum'}).reset_index()
 
         st.write(f"Conteo mensual de la cantidad de coctel utilizado por región, dividido en redes, radio y tv en {option_lugar_g18} entre {fecha_inicio_g18} y {fecha_fin_g18}")
-        st.dataframe(conteo_cocteles_lugar, hide_index=True, width=300)
+        st.dataframe(temp_g18, hide_index=True, width=300)
 
-        conteo_cocteles_mes = temp_g18.groupby(['año_mes', 'Fuente']).agg({'coctel': 'sum'}).reset_index()
+        temp_g18 = temp_g18_copy.groupby(['año_mes', 'Fuente']).agg({'coctel': 'sum'}).reset_index()
 
         #graficando el conteo de cocteles por mes y fuente
 
-        fig_18 = px.bar(conteo_cocteles_mes,
+        fig_18 = px.bar(temp_g18,
                         x='año_mes',
                         y='coctel',
                         color='Fuente',
