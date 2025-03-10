@@ -297,9 +297,16 @@ def coctel_dashboard():
             )
         )
 
-        fig1.update_xaxes(title_text="Fecha (Viernes)" if usar_fechas_viernes_g3 else "Semana")
+        fig1.update_layout(xaxis=dict(tickformat="%d-%m-%Y" if usar_fechas_viernes_g3 else ""))
+        fig1.update_xaxes(
+            title_text="Fecha (Viernes)" if usar_fechas_viernes_g3 else "Semana",
+            tickangle=45,  
+            tickmode="array" if usar_fechas_viernes_g3 else "linear",  # Usa "auto" en vez de "linear" para evitar inconsistencias
+            tickvals=temp_g1["eje_x"] if usar_fechas_viernes_g3 else None,  # Evita duplicados en fechas
+            # ticktext=temp_g1["eje_x"] if usar_fechas_viernes_g3 else None,  # Se asegura que los textos coincidan con los valores
+            tickformat="%d-%m-%Y" if usar_fechas_viernes_g3 else "",
+            )
         fig1.update_yaxes(title_text="Porcentaje de cocteles %")
-        fig1.update_layout(xaxis=dict(tickformat="%Y-%m-%d" if usar_fechas_viernes_g3 else ""))
         
         st.plotly_chart(fig1)
 
@@ -319,7 +326,7 @@ def coctel_dashboard():
     with col4:
         option_fuente_g2 = st.selectbox("Fuente g4", ("Radio", "TV", "Redes", "Todos"))
 
-    usar_fechas_viernes_g4 = st.toggle("Mostrar Fechas (Viernes de cada semana)",  key="toggle_g4")
+    usar_fechas_viernes_g4 = st.toggle("Mostrar Fechas (Viernes de cada semana)", key="toggle_g4")
 
     fecha_inicio_g2 = pd.to_datetime(fecha_inicio_g2, format="%Y-%m-%d")
     fecha_fin_g2 = pd.to_datetime(fecha_fin_g2, format="%Y-%m-%d")
@@ -341,10 +348,8 @@ def coctel_dashboard():
             (4 - temp_g2["fecha_registro"].dt.weekday) % 7, unit="D"
         )
 
-        temp_g2["a_favor"] = 0
-        temp_g2["a_favor"][temp_g2["id_posicion"].isin([1, 2])] = 1
-        temp_g2["en_contra"] = 0
-        temp_g2["en_contra"][temp_g2["id_posicion"].isin([4, 5])] = 1
+        temp_g2["a_favor"] = (temp_g2["id_posicion"].isin([1, 2])).astype(int)
+        temp_g2["en_contra"] = (temp_g2["id_posicion"].isin([4, 5])).astype(int)
 
         if option_fuente_g2 == "Radio":
             temp_g2 = temp_g2[temp_g2["id_fuente"] == 1]
@@ -369,7 +374,7 @@ def coctel_dashboard():
         temp_g2["en_contra"] = (temp_g2["en_contra"] / temp_g2["Cantidad"]) * 100
 
         if usar_fechas_viernes_g4:
-            temp_g2["eje_x"] = temp_g2["viernes"].dt.strftime("%Y-%m-%d")
+            temp_g2["eje_x"] = temp_g2["viernes"].dt.strftime("%d-%m-%Y")
         else:
             temp_g2["eje_x"] = temp_g2["fecha_registro"].dt.strftime("%Y-%m") + "-S" + (
                 (temp_g2["fecha_registro"].dt.day - 1) // 7 + 1
@@ -382,7 +387,7 @@ def coctel_dashboard():
                 y=temp_g2["a_favor"],
                 mode="lines+markers+text" if mostrar_todos else "lines+markers",
                 name="A favor",
-                text=temp_g2["a_favor"].map(lambda x: f"{x:.1f}") if mostrar_todos else None,
+                text=temp_g2["a_favor"].map(lambda x: f"{x:.1f}%") if mostrar_todos else None,
                 textposition="top center",
                 line=dict(color="blue"),
             )
@@ -394,15 +399,23 @@ def coctel_dashboard():
                 y=temp_g2["en_contra"],
                 mode="lines+markers+text" if mostrar_todos else "lines+markers",
                 name="En contra",
-                text=temp_g2["en_contra"].map(lambda x: f"{x:.1f}") if mostrar_todos else None,
+                text=temp_g2["en_contra"].map(lambda x: f"{x:.1f}%") if mostrar_todos else None,
                 textposition="top center",
                 line=dict(color="red"),
             )
         )
 
-        fig2.update_xaxes(title_text="Fecha (Viernes)" if usar_fechas_viernes_g4 else "Semana")
+        # Ajustes en el eje X para mostrar más fechas
+        fig2.update_xaxes(
+            title_text="Fecha (Viernes)" if usar_fechas_viernes_g4 else "Semana",
+            tickangle=45,  # Rota las fechas para evitar superposición
+            tickmode="array" if usar_fechas_viernes_g4 else "linear",
+            tickvals=temp_g2["eje_x"] if usar_fechas_viernes_g4 else None,
+            ticktext=temp_g2["eje_x"] if usar_fechas_viernes_g4 else None,
+            tickformat="%d-%m-%Y" if usar_fechas_viernes_g4 else "",
+        )
+
         fig2.update_yaxes(title_text="Porcentaje de noticias %")
-        fig2.update_layout(xaxis=dict(tickformat="%Y-%m-%d" if usar_fechas_viernes_g4 else ""))
 
         st.plotly_chart(fig2)
 
@@ -458,12 +471,13 @@ def coctel_dashboard():
         temp_g3["coctel_mean"] = temp_g3["coctel_mean"] * 100
 
         if usar_fechas_viernes_g5:
-            temp_g3["eje_x"] = temp_g3["viernes"].dt.strftime("%Y-%m-%d")
+            temp_g3["eje_x"] = temp_g3["viernes"].dt.strftime("%d-%m-%Y")
         else:
             temp_g3["eje_x"] = temp_g3["viernes"].dt.strftime("%Y-%m") + "-S" + (
                 (temp_g3["viernes"].dt.day - 1) // 7 + 1
             ).astype(str)
 
+        #temp_g3=temp_g3[temp_g3["coctel_mean"]>0]
         fig = px.line(
             temp_g3,
             x="eje_x",
@@ -477,12 +491,24 @@ def coctel_dashboard():
 
         fig.update_traces(textposition="top center")
 
+        # Ajustes en el eje X para mostrar más fechas y rotar etiquetas
+        fig.update_xaxes(
+            title_text="Fecha (Viernes)" if usar_fechas_viernes_g5 else "Semana",
+            tickangle=45,  # Rota las fechas para mejor legibilidad
+            tickmode="array" if usar_fechas_viernes_g5 else "linear",
+            tickvals=temp_g3["eje_x"] if usar_fechas_viernes_g5 else None,
+            ticktext=temp_g3["eje_x"] if usar_fechas_viernes_g5 else None,
+            tickformat="%d-%m-%Y" if usar_fechas_viernes_g5 else "",
+        )
+
+        fig.update_yaxes(title_text="Porcentaje de cocteles %")
+
         st.plotly_chart(fig)
 
         st.write(f"Porcentaje de cocteles por lugar en la última semana entre {fecha_inicio_g3} y {fecha_fin_g3} según {option_fuente_g3}")
 
         temp_g3 = temp_g3.sort_values("semana").groupby("lugar").last().reset_index()
-        temp_g3['coctel_mean']=temp_g3['coctel_mean'].map(lambda x: f"{x:.1f}")
+        temp_g3['coctel_mean'] = temp_g3['coctel_mean'].map(lambda x: f"{x:.1f}")
         temp_g3 = temp_g3[["lugar", "coctel_mean"]].rename(columns={"coctel_mean": "pct_cocteles"})
 
         st.dataframe(temp_g3, hide_index=True)
@@ -540,7 +566,7 @@ def coctel_dashboard():
         temp_sn2["coctel"] = temp_sn2["coctel"] * 100
 
         if usar_fechas_viernes_sn2:
-            temp_sn2["eje_x"] = temp_sn2["viernes"].dt.strftime("%Y-%m-%d")
+            temp_sn2["eje_x"] = temp_sn2["viernes"].dt.strftime("%d-%m-%Y")
         else:
             temp_sn2["eje_x"] = temp_sn2["viernes"].dt.strftime("%Y-%m") + "-S" + (
                 (temp_sn2["viernes"].dt.day - 1) // 7 + 1
@@ -559,9 +585,22 @@ def coctel_dashboard():
 
         fig_sn2.update_traces(textposition="top center")
 
+        # Ajustes en el eje X para mostrar más fechas y rotar etiquetas
+        fig_sn2.update_xaxes(
+            title_text="Fecha (Viernes)" if usar_fechas_viernes_sn2 else "Semana",
+            tickangle=45,  # Rota las fechas para mejor legibilidad
+            tickmode="array" if usar_fechas_viernes_sn2 else "linear",
+            tickvals=temp_sn2["eje_x"] if usar_fechas_viernes_sn2 else None,
+            ticktext=temp_sn2["eje_x"] if usar_fechas_viernes_sn2 else None,
+            tickformat="%d-%m-%Y" if usar_fechas_viernes_sn2 else "",
+        )
+
+        fig_sn2.update_yaxes(title_text="Porcentaje de cocteles %")
+
         st.plotly_chart(fig_sn2)
         st.write(f"Top 3 lugares con mayor porcentaje de cocteles en la última semana entre {fecha_inicio_sn2} y {fecha_fin_sn2} según {option_fuente_sn2}")  
-        temp_sn2_last['coctel'] = (temp_sn2_last['coctel']*100).map(lambda x: f"{x:.1f}")
+
+        temp_sn2_last['coctel'] = (temp_sn2_last['coctel'] * 100).map(lambda x: f"{x:.1f}")
         st.dataframe(temp_sn2_last, hide_index=True)
 
     else:
@@ -620,12 +659,12 @@ def coctel_dashboard():
         temp_g6_redes["coctel"] = temp_g6_redes["coctel"] * 100
 
         if usar_fechas_viernes_g6:
-            temp_g6_redes["eje_x"] = temp_g6_redes["viernes"].dt.strftime("%Y-%m-%d")
+            temp_g6_redes["eje_x"] = temp_g6_redes["viernes"].dt.strftime("%d-%m-%Y")
         else:
             temp_g6_redes["eje_x"] = temp_g6_redes["viernes"].dt.strftime("%Y-%m") + "-S" + (
                 (temp_g6_redes["viernes"].dt.day - 1) // 7 + 1
             ).astype(str)
-
+    
         fig_6 = px.line(
             temp_g6_redes,
             x="eje_x",
@@ -638,6 +677,19 @@ def coctel_dashboard():
         )
 
         fig_6.update_traces(textposition="top center")
+
+        # Ajustes en el eje X para mostrar más fechas y rotar etiquetas
+        fig_6.update_xaxes(
+            title_text="Fecha (Viernes)" if usar_fechas_viernes_g6 else "Semana",
+            tickangle=45,  
+            tickmode="array" if usar_fechas_viernes_g6 else "linear",
+            tickvals=temp_g6_redes["eje_x"] if usar_fechas_viernes_g6 else None,
+            ticktext=temp_g6_redes["eje_x"] if usar_fechas_viernes_g6 else None,
+            tickformat="%d-%m-%Y" if usar_fechas_viernes_g6 else "",
+        )
+
+        fig_6.update_yaxes(title_text="Porcentaje de cocteles %")
+
         st.plotly_chart(fig_6)
 
     elif option_fuente_g6 != "Redes" and not temp_g6_medio.empty:
@@ -656,7 +708,7 @@ def coctel_dashboard():
         temp_g6_medio["coctel"] = temp_g6_medio["coctel"] * 100
 
         if usar_fechas_viernes_g6:
-            temp_g6_medio["eje_x"] = temp_g6_medio["viernes"].dt.strftime("%Y-%m-%d")
+            temp_g6_medio["eje_x"] = temp_g6_medio["viernes"].dt.strftime("%d-%m-%Y")
         else:
             temp_g6_medio["eje_x"] = temp_g6_medio["viernes"].dt.strftime("%Y-%m") + "-S" + (
                 (temp_g6_medio["viernes"].dt.day - 1) // 7 + 1
@@ -674,6 +726,14 @@ def coctel_dashboard():
         )
 
         fig_6.update_traces(textposition="top center")
+        fig_6.update_xaxes(
+            title_text="Fecha (Viernes)" if usar_fechas_viernes_g6 else "Semana",
+            tickangle=45,  
+            tickmode="array" if usar_fechas_viernes_g6 else "linear",
+            tickvals=temp_g6_medio["eje_x"] if usar_fechas_viernes_g6 else None,
+            ticktext=temp_g6_medio["eje_x"] if usar_fechas_viernes_g6 else None,
+            tickformat="%d-%m-%Y" if usar_fechas_viernes_g6 else "",
+        )
         st.plotly_chart(fig_6)
 
     else:
@@ -732,15 +792,24 @@ def coctel_dashboard():
         temp_g7 = temp_g7[temp_g7["id_fuente"] == 3]
 
     if not temp_g7.empty:
-        departamentos = macroregiones.get(option_macroregion_g7, [])
-        temp_g7 = temp_g7[temp_g7["lugar"].isin(departamentos)]
-        
+        temp_g7["semana"] = (
+            temp_g7["fecha_registro"].dt.year.map(str)
+            + "-"
+            + temp_g7["fecha_registro"].dt.isocalendar().week.map(str)
+        )
         temp_g7["viernes"] = temp_g7["fecha_registro"] + pd.to_timedelta(
             (4 - temp_g7["fecha_registro"].dt.weekday) % 7, unit="D"
         )
-
-        temp_g7 = temp_g7.groupby(["viernes", "lugar"], as_index=False).agg(coctel_mean=("coctel", "mean"))
+        temp_g7 = temp_g7.groupby(["semana", "lugar"], as_index=False).agg(
+            coctel_mean=("coctel", "mean"), viernes=("viernes", "first")
+            ).reset_index()
         temp_g7["coctel_mean"] = temp_g7["coctel_mean"] * 100
+        temp_g7 = temp_g7[temp_g7["coctel_mean"] > 0]
+        temp_g7 = temp_g7.sort_values("semana")
+
+        departamentos = macroregiones.get(option_macroregion_g7, [])
+        temp_g7 = temp_g7[temp_g7["lugar"].isin(departamentos)]
+        
 
         if usar_fechas_viernes_g7:
             temp_g7["eje_x"] = temp_g7["viernes"].dt.strftime("%Y-%m-%d")
@@ -748,8 +817,6 @@ def coctel_dashboard():
             temp_g7["eje_x"] = temp_g7["viernes"].dt.strftime("%Y-%m") + "-S" + (
                 (temp_g7["viernes"].dt.day - 1) // 7 + 1
             ).astype(str)
-
-        temp_g7 = temp_g7.sort_values("viernes")
 
         fig_7 = px.line(
             temp_g7,
@@ -761,9 +828,19 @@ def coctel_dashboard():
             markers=True,
             text=temp_g7["coctel_mean"].map(lambda x: f"{x:.1f}") if mostrar_todos else None,
         )
-
         fig_7.update_traces(textposition="top center")
-        fig_7.update_xaxes(type="category" if not usar_fechas_viernes_g7 else "date")
+        fig1.update_layout(xaxis=dict(tickformat="%d-%m-%Y" if usar_fechas_viernes_g3 else ""))
+        fig_7.update_xaxes(
+            title_text="Fecha (Viernes)" if usar_fechas_viernes_g7 else "Semana",
+            tickangle=45,  
+            tickmode="array" if usar_fechas_viernes_g7 else "linear",  # Usa "auto" en vez de "linear" para evitar inconsistencias
+            tickvals=temp_g7["eje_x"] if usar_fechas_viernes_g7 else None,  # Evita duplicados en fechas
+            ticktext=temp_g7["eje_x"] if usar_fechas_viernes_g7 else None,  # Se asegura que los textos coincidan con los valores
+            # type="category" if not usar_fechas_viernes_g7 else "date",  # Mantiene el formato correcto del eje X
+        )        
+
+
+        # fig_7.update_xaxes(type="category" if not usar_fechas_viernes_g7 else "date")
 
         st.plotly_chart(fig_7)
         st.write("Nota: Los valores muestran el porcentaje de cocteles en cada semana tomando como referencia el viernes")
@@ -1791,7 +1868,8 @@ def coctel_dashboard():
         )
 
         fig.update_traces(
-            textposition="outside" if mostrar_todos else "none"  # Posiciona el texto fuera si mostrar_todos es True
+            textposition="outside" if mostrar_todos else "none",  # Posiciona el texto fuera si mostrar_todos es True
+            textfont_size=1000  # Hace aún más grandes los porcentajes
         )
 
         # Agregar líneas de promedio por fuente
@@ -1809,14 +1887,14 @@ def coctel_dashboard():
     else:
         st.warning("No hay datos para mostrar")
 
-    #%% 29.- gráfico de barras sobre actores y posiciones
+    #%% 29.- gráfico de barras sobre porcentaje de cóctel en los últimos 3 meses por fuente
     st.subheader("22.- Porcentaje de cóctel en los últimos 3 meses por fuente")
 
     col1, col2 = st.columns(2)
     with col1:
         ano_fin_g29 = st.selectbox("Año de referencia g22", anos, index=len(anos)-1)
         mes_fin_g29 = st.selectbox("Mes de referencia g22", meses, index=11)
-    
+
     option_regiones_g29 = st.multiselect(
         "Lugar g22",
         temp_coctel_fuente['lugar'].unique().tolist(),
@@ -1840,7 +1918,6 @@ def coctel_dashboard():
     ]
 
     temp_g29['Fuente'] = temp_g29['id_fuente'].map(id_fuente_dict)
-
     temp_g29 = temp_g29[temp_g29['Fuente'] == fuente_g29]
 
     if not temp_g29.empty:
@@ -1849,43 +1926,75 @@ def coctel_dashboard():
         temp_g29['porcentaje_coctel'] = (temp_g29['coctel'] / total_por_lugar) * 100
         temp_g29 = temp_g29.dropna()
 
-        promedio = temp_g29['porcentaje_coctel'].mean()
+        # Mapeo de meses en español
+        meses_es = {
+            "January": "Enero",
+            "February": "Febrero",
+            "March": "Marzo",
+            "April": "Abril",
+            "May": "Mayo",
+            "June": "Junio",
+            "July": "Julio",
+            "August": "Agosto",
+            "September": "Septiembre",
+            "October": "Octubre",
+            "November": "Noviembre",
+            "December": "Diciembre"
+        }
+
+        # Mostrar solo el nombre del mes en la leyenda y traducirlo
+        temp_g29['mes'] = temp_g29['fecha_mes'].dt.strftime('%B').map(meses_es)
+
+        # Verificar que haya suficientes meses únicos para asignar colores
+        unique_months = temp_g29['mes'].unique()
+
+        if len(unique_months) >= 3:
+            color_mapping = {
+                unique_months[-3]: "lightblue",
+                unique_months[-2]: "cornflowerblue",
+                unique_months[-1]: "navy"
+            }
+        elif len(unique_months) == 2:
+            color_mapping = {
+                unique_months[-2]: "lightblue",
+                unique_months[-1]: "navy"
+            }
+        elif len(unique_months) == 1:
+            color_mapping = {unique_months[-1]: "navy"}
+        else:
+            st.warning("No hay datos disponibles para la selección actual.")
+            st.stop()
 
         fig = px.bar(
             temp_g29,
             x="lugar",
             y="porcentaje_coctel",
-            color="fecha_mes",
+            color="mes",
             barmode="group",
             title=f"Porcentaje de cóctel {fuente_g29} - Últimos 3 meses",
-            labels={"lugar": "Región", "porcentaje_coctel": "Porcentaje de Cóctel"},
-            color_discrete_sequence=["lightblue", "darkblue", "navy"],
-            text=temp_g29["porcentaje_coctel"].map("{:.1f}%".format) if mostrar_todos else None
+            labels={"lugar": "Región", "porcentaje_coctel": "Porcentaje de Cóctel", "mes": "Mes"},
+            color_discrete_map=color_mapping,
+            text=temp_g29["porcentaje_coctel"].map("{:.1f}%".format)
         )
 
         fig.update_traces(
-            textposition="outside" if mostrar_todos else "none"
+            textposition="outside",
+            textfont_size=1000  # Hace aún más grandes los porcentajes
         )
 
         st.plotly_chart(fig)
 
     else:
-        st.warning("No hay datos para mostrar")
+        st.warning("No hay datos para mostrar en la selección actual.")
 
     #%% 30.- gráfico de barras sobre actores y posiciones
     st.subheader("23.- Gráfico Mensual Lineal sobre la evolución de Radio, Redes y TV")
 
     col1, col2 = st.columns(2)
     with col1:
-        fecha_inicio_g30 = st.date_input(
-            "Fecha Inicio g23",
-            format="DD.MM.YYYY"
-        )
+        fecha_inicio_g30 = st.date_input("Fecha Inicio g23", format="DD.MM.YYYY")
     with col2:
-        fecha_fin_g30 = st.date_input(
-            "Fecha Fin g23",
-            format="DD.MM.YYYY"
-        )
+        fecha_fin_g30 = st.date_input("Fecha Fin g23", format="DD.MM.YYYY")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -1894,6 +2003,9 @@ def coctel_dashboard():
             lugares_uniques,
             lugares_uniques
         )
+
+    # Opción para mostrar valores en el gráfico
+    mostrar_todos_g30 = st.toggle("Mostrar todos los valores", key="toggle_g30")
 
     fecha_inicio_g30 = pd.to_datetime(fecha_inicio_g30, format='%Y-%m-%d')
     fecha_fin_g30 = pd.to_datetime(fecha_fin_g30, format='%Y-%m-%d')
@@ -1924,12 +2036,15 @@ def coctel_dashboard():
             color='Fuente',
             markers=True,  
             color_discrete_map={'Radio': 'gray', 'Redes': 'red', 'TV': 'blue', 'Total': 'green'},  # Línea Total en verde
-            title="Gráfico Mensual Lineal sobre la evolución de Radio, Redes y TV"
+            title="Gráfico Mensual Lineal sobre la evolución de Radio, Redes y TV",
+            text=temp_g30["coctel"].map(str) if mostrar_todos_g30 else None  # Agregar valores solo si la opción está activada
         )
+
+        fig.update_traces(textposition="top center")
 
         fig.update_layout(
             xaxis_title="Mes y Año",  
-            yaxis_title="Cantidad de Menciones", 
+            yaxis_title="Impactos de Coctel", 
             xaxis=dict(tickangle=45, showgrid=False),  
             yaxis=dict(showgrid=True), 
             plot_bgcolor="white",
@@ -1941,8 +2056,6 @@ def coctel_dashboard():
 
     else:
         st.warning("No hay datos para mostrar")
-
-
 
     #%% 31.- gráfico de barras sobre actores y posiciones
     st.subheader("24.- Porcentaje de cocteles por mensajes fuerza")
