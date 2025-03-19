@@ -902,7 +902,7 @@ def coctel_dashboard():
                     title=titulo_g7,
                     barmode='group',
                     labels={'count': 'Conteo', 'Posición': 'Posición', 'Tipo de Medio': 'Tipo de Medio'},
-                    color_discrete_map={'radio': '#c54b8c', 'tv': '#e4d00a', 'redes': '#8b9dce'},
+                    color_discrete_map={'Radio': '#3F6EC3', 'TV': '#A1A1A1', 'Redes': '#C00000'},
                     text='count'
                     )
 
@@ -1146,6 +1146,7 @@ def coctel_dashboard():
                     text='Cantidad',
                     title="Cantidad de Medios (Canales) que generan Cocteles por Lugar",
                     labels={'Cantidad': 'Número de Medios', 'lugar': 'Lugar', 'Fuente': 'Fuente'},
+                    color_discrete_map={'Radio': '#3F6EC3', 'TV': '#A1A1A1', 'Redes': '#C00000'},
                     barmode='stack')
 
         st.plotly_chart(fig, use_container_width=True)
@@ -1223,7 +1224,7 @@ def coctel_dashboard():
                                 'coctel': 'Número de Cocteles',
                                 'Fuente': 'Fuente'},
                         text='coctel', 
-                        color_discrete_map = {'radio': '#c54b8c', 'tv': '#e4d00a', 'redes': '#8b9dce'}
+                        color_discrete_map={'Radio': '#3F6EC3', 'TV': '#A1A1A1', 'Redes': '#C00000'},
                         )
 
         st.plotly_chart(fig_18)
