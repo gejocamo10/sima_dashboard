@@ -5,6 +5,7 @@ pyarrow
 sqlalchemy
 psycopg2-binary
 python-dotenv
+pytz
 
 # seaborn
 # matplotlib

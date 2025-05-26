@@ -3,7 +3,7 @@ import streamlit as st
 import os
 from datetime import datetime, timedelta
 import pytz
-from function_cocteles import coctel_dashboard
+from function_cocteles import coctel_dashboard, cargar_coctel_completo
 from function_users import usarios_acontecimientos_dashboard
 
 #%%% Formateo del nombre del sitio y site config
@@ -12,14 +12,19 @@ st.title("Dashboard SIMA")
 st.divider()
 
 #%%%% Agregar opción al menú lateral
-peru_tz = pytz.timezone("America/Lima")
-file_path = "app/tables/temp_coctel_completo.parquet"
-if os.path.exists(file_path):
-    last_updated = os.path.getmtime(file_path)
-    # Convertir a datetime con hora UTC y luego ajustar a la zona horaria de Perú
-    last_updated_date = datetime.fromtimestamp(last_updated, pytz.utc).astimezone(peru_tz).strftime('%d/%m/%Y %H:%M:%S')
+# peru_tz = pytz.timezone("America/Lima")
+df_coctel, *_ = cargar_coctel_completo()
+if not df_coctel.empty:
+    ut = df_coctel['fecha_registro'].max()
+    if ut.tzinfo is None:
+        ut = ut.replace(tzinfo=pytz.UTC)
+    else:
+        ut = ut.tz_convert(pytz.UTC)
+    peru_tz = pytz.timezone("America/Lima")
+    ut_peru = ut.astimezone(peru_tz)
+    last_updated_date = ut_peru.strftime('%d/%m/%Y')
 else:
-    last_updated_date = "Archivo no encontrado"
+    last_updated_date = "Sin datos disponibles"
 
 st.sidebar.title("Opciones")
 st.sidebar.write(f"Fecha de última actualización de datos: {last_updated_date}")
