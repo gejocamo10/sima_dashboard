@@ -7,4 +7,5 @@ observaciones.xlsx
 temp_coctel_completo.csv
 test.ipynb
 .devcontainer/
+.streamlit/
 .streamlit/secrets.toml
