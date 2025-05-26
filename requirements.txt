@@ -6,6 +6,7 @@ sqlalchemy
 psycopg2-binary
 python-dotenv
 pytz
+requests
 
 # seaborn
 # matplotlib
