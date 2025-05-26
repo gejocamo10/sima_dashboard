@@ -1,15 +1,17 @@
 import pandas as pd
 import numpy as np
 import streamlit as st
+from utils import get_query
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
 from pandas.tseries.offsets import MonthEnd
 
-#%%% Funcion 1
-def coctel_dashboard():
-    st.title("Análisis de Cocteles")
-    temp_coctel_completo = pd.read_parquet('app/tables/temp_coctel_completo.parquet')
+#%% Carga de Base de Datos
+@st.cache_data(ttl=3600)
+def cargar_coctel_completo():
+    # temp_coctel_completo = pd.read_parquet('app/tables/temp_coctel_completo.parquet')
+    temp_coctel_completo = get_query("cocteles","coctel_completo")
     temp_coctel_completo['fecha_registro'] = pd.to_datetime(temp_coctel_completo['fecha_registro'])
     temp_coctel_completo['coctel'] = pd.to_numeric(temp_coctel_completo['coctel'], errors='coerce').fillna(0.0)
     temp_coctel_completo = temp_coctel_completo[~temp_coctel_completo["coctel"].isin([5.0, 15.0])]
@@ -33,6 +35,13 @@ def coctel_dashboard():
     temp_coctel_fuente_fb['nombre_canal'] = temp_coctel_fuente_fb['canal_nombre']
 
     lugares_uniques = temp_coctel_fuente['lugar'].unique().tolist()
+    return temp_coctel_completo, temp_coctel_fuente, temp_coctel_fuente_programas, temp_coctel_fuente_fb, temp_coctel_fuente_actores, temp_coctel_temas, lugares_uniques
+
+#%%% Funcion 1
+def coctel_dashboard():
+    st.title("Análisis de Cocteles")
+    
+    temp_coctel_completo, temp_coctel_fuente, temp_coctel_fuente_programas, temp_coctel_fuente_fb, temp_coctel_fuente_actores, temp_coctel_temas, lugares_uniques = cargar_coctel_completo()
 
     #%% diccionarios
 

@@ -1,22 +1,34 @@
 import pandas as pd
 import streamlit as st
 from datetime import datetime, timedelta
+from utils import get_query
 
-#%%% Funcion 2
-def usarios_acontecimientos_dashboard():
-    st.title("Usuarios y Acontecimientos - Análisis Diario")
-
+#%% Carga de Base de Datos
+@st.cache_data(ttl=3600)
+def cargar_usuarios_completo():
     # Cargar las tablas desde los archivos
-    usuarios_por_dia = pd.read_parquet('app/tables/temp_usuarios_por_dia.parquet')
-    acontecimientos_por_dia = pd.read_parquet('app/tables/temp_acontecimientos_por_dia.parquet')
-    usuarios_ultimo_dia = pd.read_parquet('app/tables/temp_usuarios_ultimo_dia.parquet')
-    usuarios_semana = pd.read_parquet('app/tables/temp_usuarios_7_dias.parquet')
+    # usuarios_por_dia = pd.read_parquet('app/tables/temp_usuarios_por_dia.parquet')
+    # acontecimientos_por_dia = pd.read_parquet('app/tables/temp_acontecimientos_por_dia.parquet')
+    # usuarios_ultimo_dia = pd.read_parquet('app/tables/temp_usuarios_ultimo_dia.parquet')
+    # usuarios_semana = pd.read_parquet('app/tables/temp_usuarios_7_dias.parquet')
+
+    usuarios_por_dia = get_query("usuarios","usuarios_por_dia")
+    acontecimientos_por_dia = get_query("usuarios","acontecimientos_por_dia")
+    usuarios_ultimo_dia = get_query("usuarios","usuarios_ultimo_dia")
+    usuarios_semana = get_query("usuarios","usuarios_7_dias")
 
     # Formatear las columnas de fecha
     # usuarios_por_dia['fecha'] = pd.to_datetime(usuarios_por_dia['fecha'])
     # acontecimientos_por_dia['fecha'] = pd.to_datetime(acontecimientos_por_dia['fecha'])
     # usuarios_ultimo_dia['ultima_actualizacion'] = pd.to_datetime(usuarios_ultimo_dia['ultima_actualizacion'])
+    return usuarios_por_dia, acontecimientos_por_dia, usuarios_ultimo_dia, usuarios_semana
 
+#%%% Funcion 2
+def usarios_acontecimientos_dashboard():
+    st.title("Usuarios y Acontecimientos - Análisis Diaario")
+
+    usuarios_por_dia, acontecimientos_por_dia, usuarios_ultimo_dia, usuarios_semana = cargar_usuarios_completo()
+    
     usuarios_por_dia['fecha'] = usuarios_por_dia['fecha'].map(str)
     hoy = datetime.now()
     hace_30_dias = hoy - timedelta(days=90)

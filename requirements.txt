@@ -1,14 +1,13 @@
 pandas
 streamlit
 plotly
-plotly-express
 pyarrow
 sqlalchemy
 psycopg2-binary
 python-dotenv
-seaborn
-matplotlib
 
+# seaborn
+# matplotlib
 # fastapi[standard]
 # pandas==2.2.3
 # streamlit==1.40.2
